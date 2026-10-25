@@ -504,6 +504,35 @@ class DatabaseManager:
         record.setdefault("audit_history", []).append(audit_entry)
         return record, None
 
+    def get_admin_failed_cases(self, institution=None):
+        """
+        Returns records where AI detected verification failure, anomaly,
+        duplicate identity, or missing documents for Institution & AICTE Admin approval.
+        """
+        all_cases = self.get_workflows(role="AICTE_ADMIN", institution=institution, status="ALL")
+        failed_cases = []
+        for c in all_cases:
+            report = c.get("ai_verification_report") or {}
+            is_failed = (
+                c.get("status") in ["FLAGGED_REVIEW", "REJECTED_WITH_REMARKS", "FRAUD_CONFIRMED_REJECTED", "SUBMITTED"]
+                or report.get("status") in ["AI_FLAGGED_DISCREPANCY", "AI_REJECTED_FRAUD", "CONSENT_DENIED"]
+                or (report.get("trust_score") is not None and report.get("trust_score") < 85.0)
+                or len(report.get("flags") or []) > 0
+            )
+            if is_failed:
+                failed_cases.append(c)
+        return failed_cases
+
+    def admin_resolve_failed_case(self, workflow_id, decision, remarks, admin_user=None):
+        """
+        Enables AICTE or Institution Admin to approve or reject cases where AI detected verification failure.
+        - decision == 'APPROVE': overrides AI flag, enrolls student into live repository & issues APAAR ID
+        - decision == 'REJECT': confirms failure with clear remarks for correction
+        """
+        user = admin_user or {"name": "AICTE Institution Administrator", "role": "AICTE_ADMIN"}
+        action = "AICTE_FINAL_APPROVE" if str(decision).upper() == "APPROVE" else "REJECT_WITH_REMARKS"
+        return self.process_workflow_action(workflow_id, action, remarks, user)
+
     def add_notification(self, recipient_role, institution, title, message, workflow_id=None):
         notif = {
             "id": f"NOTIF-{int(datetime.now().timestamp() * 1000)}",

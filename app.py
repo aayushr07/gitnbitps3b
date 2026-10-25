@@ -305,6 +305,44 @@ def get_workflow_notifications():
     return jsonify({"success": True, "notifications": notifs})
 
 # -------------------------------------------------------------
+# DEDICATED ADMIN PANEL APPROVALS (AI-FAILED / FLAGGED CASES)
+# -------------------------------------------------------------
+@app.route("/api/admin/failed-approvals", methods=["GET"])
+def get_admin_failed_approvals():
+    """
+    Returns only cases where AI detected verification failure, duplicate enrollment,
+    or demographic discrepancy for AICTE and Institution Admin review.
+    """
+    inst = request.args.get("institution")
+    cases = db_manager.get_admin_failed_cases(institution=inst)
+    return jsonify({
+        "success": True,
+        "count": len(cases),
+        "failed_cases": cases
+    })
+
+@app.route("/api/admin/resolve-approval", methods=["POST"])
+def resolve_admin_approval():
+    data = request.get_json() or {}
+    workflow_id = data.get("workflow_id")
+    decision = data.get("decision", "APPROVE")
+    remarks = data.get("remarks", "")
+    user = data.get("user") or {"name": "AICTE Admin", "role": "AICTE_ADMIN"}
+
+    if not workflow_id:
+        return jsonify({"success": False, "message": "workflow_id is required"}), 400
+
+    updated_record, err = db_manager.admin_resolve_failed_case(workflow_id, decision, remarks, user)
+    if err:
+        return jsonify({"success": False, "message": err}), 400
+
+    return jsonify({
+        "success": True,
+        "message": f"Case {workflow_id} resolved with decision: {decision}.",
+        "record": updated_record
+    })
+
+# -------------------------------------------------------------
 # AI-POWERED DATA QUALITY ASSISTANT ENDPOINTS
 # -------------------------------------------------------------
 @app.route("/api/data-quality/analyze", methods=["POST"])
