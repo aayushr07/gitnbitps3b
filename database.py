@@ -1,56 +1,25 @@
+"""
+Database Manager for AICTE APAAR ID Platform
+Handles MongoDB connections, in-memory fallbacks, automated validation engine,
+admission intake checking, and verifiable academic credential generation.
+"""
+
 import os
 import re
 from datetime import datetime
 from dotenv import load_dotenv
+
 from seed_data import (
-    INITIAL_STUDENTS, 
-    INSTITUTIONS, 
-    WORKFLOW_APPLICATIONS, 
-    INITIAL_NOTIFICATIONS, 
-    DIRTY_BATCH_DATA, 
-    AUTHORITY_USERS
+    INSTITUTIONS,
+    INITIAL_STUDENTS,
+    SAMPLE_ADMISSION_BATCH,
+    AUTHORITY_USERS,
+    INITIAL_AUDIT_LOGS
 )
 
 load_dotenv()
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/apaar_aicte")
 
-MONGO_URI = os.getenv("MONGO_URI") or os.getenv("MONGODB_URI") or "mongodb://localhost:27017/apaar_aicte"
-
-# Dictionary for AI Data Quality normalization
-INSTITUTION_NORMALIZATION_MAP = {
-    "deli tech univ": "Delhi Technological University",
-    "delhi tech": "Delhi Technological University",
-    "dtu": "Delhi Technological University",
-    "vjit": "Veermata Jijabai Technological Institute (VJTI Mumbai)",
-    "vjit mumbai": "Veermata Jijabai Technological Institute (VJTI Mumbai)",
-    "vjti": "Veermata Jijabai Technological Institute (VJTI Mumbai)",
-    "coep pune": "College of Engineering Pune (COEP)",
-    "pune engg": "College of Engineering Pune (COEP)",
-    "coep": "College of Engineering Pune (COEP)",
-    "jadavpur univ": "Jadavpur University Faculty of Engg",
-    "jadavpur": "Jadavpur University Faculty of Engg",
-    "psg tech": "PSG College of Technology",
-    "psg": "PSG College of Technology"
-}
-
-BRANCH_NORMALIZATION_MAP = {
-    "comp sci engg": {"branch": "CSE", "program": "B.Tech Computer Science & Engineering"},
-    "comp sci": {"branch": "CSE", "program": "B.Tech Computer Science & Engineering"},
-    "computer science": {"branch": "CSE", "program": "B.Tech Computer Science & Engineering"},
-    "cs": {"branch": "CSE", "program": "B.Tech Computer Science & Engineering"},
-    "cse engg": {"branch": "CSE", "program": "B.Tech Computer Science & Engineering"},
-    "artificial intel": {"branch": "AI & DS", "program": "B.Tech Artificial Intelligence & Data Science"},
-    "ai ds": {"branch": "AI & DS", "program": "B.Tech Artificial Intelligence & Data Science"},
-    "ai/ds": {"branch": "AI & DS", "program": "B.Tech Artificial Intelligence & Data Science"},
-    "ai & ds": {"branch": "AI & DS", "program": "B.Tech Artificial Intelligence & Data Science"},
-    "entc": {"branch": "ENTC", "program": "B.Tech Electronics & Telecommunication"},
-    "electronics": {"branch": "ENTC", "program": "B.Tech Electronics & Telecommunication"},
-    "ee": {"branch": "EE", "program": "B.Tech Electrical Engineering"},
-    "electrical": {"branch": "EE", "program": "B.Tech Electrical Engineering"},
-    "me": {"branch": "ME", "program": "B.Tech Mechanical Engineering"},
-    "mechanical": {"branch": "ME", "program": "B.Tech Mechanical Engineering"},
-    "cyber security": {"branch": "Cyber Security", "program": "B.Tech Cyber Security"}
-}
 
 class DatabaseManager:
     def __init__(self):
@@ -59,32 +28,31 @@ class DatabaseManager:
         self.db = None
         self.mode = "In-Memory / Local Mode"
         
-        # In-memory stores (used as fallback or when MongoDB is not connected)
+        # In-memory stores
         self.memory_students = [dict(s) for s in INITIAL_STUDENTS]
         self.memory_institutions = [dict(i) for i in INSTITUTIONS]
-        self.memory_workflows = [dict(w) for w in WORKFLOW_APPLICATIONS]
-        self.memory_notifications = [dict(n) for n in INITIAL_NOTIFICATIONS]
-        self.memory_dirty_batch = [dict(d) for d in DIRTY_BATCH_DATA]
+        self.memory_audit_logs = [dict(a) for a in INITIAL_AUDIT_LOGS]
+        self.memory_sample_batch = [dict(b) for b in SAMPLE_ADMISSION_BATCH]
         self.memory_verifications = [
             {
                 "id": "VER-1001",
                 "apaar_id": "9283-4710-8521",
                 "student_name": "Aarav Sharma",
                 "institution": "Delhi Technological University",
-                "status": "SUCCESS",
-                "verifier": "AICTE Gate Scanner / Automated QR",
+                "status": "SUCCESS_VERIFIED",
+                "verifier": "Tata Consultancy Services (HR Campus Onboarding)",
                 "timestamp": datetime.now().isoformat(),
-                "details": "Biometric match 99.4%, ABC credits verified (126), DigiLocker verified."
+                "details": "Academic Bank of Credits (126), DigiLocker e-KYC, and AICTE Approval authenticated."
             },
             {
                 "id": "VER-1002",
                 "apaar_id": "9999-0000-1111",
                 "student_name": "Vikramaditya Rao",
-                "institution": "Apex Institute [Disputed]",
+                "institution": "Apex Institute of Advanced Technology",
                 "status": "ALERT_FLAGGED",
-                "verifier": "Central Admission AICTE Check",
+                "verifier": "AICTE Admissions Verification Gateway",
                 "timestamp": datetime.now().isoformat(),
-                "details": "DUAL ENROLLMENT FRAUD DETECTED across 2 different colleges."
+                "details": "ALERT: Concurrent dual enrollment detected across 2 institutions. Excess intake violation flagged."
             }
         ]
         
@@ -93,7 +61,7 @@ class DatabaseManager:
     def _init_mongo(self):
         try:
             from pymongo import MongoClient
-            self.client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=7000)
+            self.client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=4000)
             self.client.admin.command('ping')
             try:
                 self.db = self.client.get_default_database()
@@ -103,39 +71,33 @@ class DatabaseManager:
                 self.db = self.client["apaar_aicte"]
             
             self.connected_to_mongo = True
-            self.mode = f"MongoDB Connected ({self.db.name})"
-            print(f"[DatabaseManager] Successfully connected to MongoDB at {self.mode}")
-            
-            # Seed collections if empty
-            if self.db.students.count_documents({}) == 0:
-                print("[DatabaseManager] Seeding students into MongoDB...")
-                self.db.students.insert_many([dict(s) for s in INITIAL_STUDENTS])
-            
-            if self.db.institutions.count_documents({}) == 0:
-                self.db.institutions.insert_many([dict(i) for i in INSTITUTIONS])
-
-            if self.db.workflows.count_documents({}) == 0:
-                print("[DatabaseManager] Seeding workflow applications into MongoDB...")
-                self.db.workflows.insert_many([dict(w) for w in WORKFLOW_APPLICATIONS])
-
-            if self.db.notifications.count_documents({}) == 0:
-                self.db.notifications.insert_many([dict(n) for n in INITIAL_NOTIFICATIONS])
-
-            if self.db.verifications.count_documents({}) == 0:
-                self.db.verifications.insert_many([dict(v) for v in self.memory_verifications])
-                
+            self.mode = "MongoDB Connected"
+            print("Connected to MongoDB successfully.")
+            self._sync_seed_if_empty()
         except Exception as e:
             self.connected_to_mongo = False
-            self.mode = "In-Memory Fallback (Set MONGO_URI in .env to persist)"
-            print(f"[DatabaseManager] MongoDB not available ({e}). Running in {self.mode}")
+            self.mode = "In-Memory Standalone"
+            print(f"MongoDB not available ({e}). Running in resilient In-Memory Mode.")
+
+    def _sync_seed_if_empty(self):
+        if not self.connected_to_mongo:
+            return
+        try:
+            if self.db.students.count_documents({}) == 0:
+                self.db.students.insert_many([dict(s) for s in INITIAL_STUDENTS])
+            if self.db.institutions.count_documents({}) == 0:
+                self.db.institutions.insert_many([dict(i) for i in INSTITUTIONS])
+            if self.db.audit_logs.count_documents({}) == 0:
+                self.db.audit_logs.insert_many([dict(a) for a in INITIAL_AUDIT_LOGS])
+        except Exception as e:
+            print("MongoDB sync error:", e)
 
     def get_status(self):
         return {
-            "connected_to_mongo": self.connected_to_mongo,
             "mode": self.mode,
-            "mongo_uri_configured": bool(os.getenv("MONGO_URI") or os.getenv("MONGODB_URI")),
-            "total_students": self.db.students.count_documents({}) if self.connected_to_mongo else len(self.memory_students),
-            "total_workflow_cases": self.db.workflows.count_documents({}) if self.connected_to_mongo else len(self.memory_workflows)
+            "connected_to_mongo": self.connected_to_mongo,
+            "total_students": len(self.memory_students) if not self.connected_to_mongo else self.db.students.count_documents({}),
+            "total_institutions": len(self.memory_institutions) if not self.connected_to_mongo else self.db.institutions.count_documents({})
         }
 
     @staticmethod
@@ -145,9 +107,9 @@ class DatabaseManager:
         return re.sub(r'[^0-9A-Za-z]', '', str(apaar_id)).upper()
 
     # -------------------------------------------------------------
-    # STUDENT CRUD & RETRIEVAL
+    # STUDENT RETRIEVAL & CRUD
     # -------------------------------------------------------------
-    def get_students(self, query=None, branch=None, status=None, page=1, limit=50):
+    def get_students(self, query=None, branch=None, status=None, institution=None, quota=None, page=1, limit=50):
         if self.connected_to_mongo:
             filter_doc = {}
             if query:
@@ -155,6 +117,7 @@ class DatabaseManager:
                 filter_doc["$or"] = [
                     {"full_name": regex},
                     {"apaar_id": regex},
+                    {"student_id": regex},
                     {"institution": regex},
                     {"email": regex},
                     {"branch": regex}
@@ -163,6 +126,21 @@ class DatabaseManager:
                 filter_doc["branch"] = branch
             if status and status != "All":
                 filter_doc["status"] = status
+            if institution and institution != "All":
+                filter_doc["institution"] = institution
+            if quota and quota != "All":
+                if quota == "Supernumerary":
+                    filter_doc["supernumerary_seat"] = True
+                elif quota == "NRI":
+                    filter_doc["nri_category"] = {"$in": ["NRI", "NRI-Sponsored"]}
+                elif quota == "OCI":
+                    filter_doc["oci_status"] = True
+                elif quota == "FN":
+                    filter_doc["foreign_national_status"] = True
+                elif quota == "Regular":
+                    filter_doc["supernumerary_seat"] = False
+                    filter_doc["nri_category"] = "Not Applicable"
+                    filter_doc["foreign_national_status"] = False
             
             cursor = self.db.students.find(filter_doc, {"_id": 0}).skip((page - 1) * limit).limit(limit)
             students = list(cursor)
@@ -176,6 +154,7 @@ class DatabaseManager:
                     s for s in filtered
                     if q in s.get("full_name", "").lower()
                     or q in s.get("apaar_id", "").lower()
+                    or q in s.get("student_id", "").lower()
                     or q in s.get("institution", "").lower()
                     or q in s.get("email", "").lower()
                     or q in s.get("branch", "").lower()
@@ -184,28 +163,50 @@ class DatabaseManager:
                 filtered = [s for s in filtered if s.get("branch") == branch]
             if status and status != "All":
                 filtered = [s for s in filtered if s.get("status") == status]
+            if institution and institution != "All":
+                filtered = [s for s in filtered if s.get("institution") == institution or s.get("aicte_id") == institution]
+            if quota and quota != "All":
+                if quota == "Supernumerary":
+                    filtered = [s for s in filtered if s.get("supernumerary_seat") is True]
+                elif quota == "NRI":
+                    filtered = [s for s in filtered if s.get("nri_category") in ["NRI", "NRI-Sponsored"]]
+                elif quota == "OCI":
+                    filtered = [s for s in filtered if s.get("oci_status") is True]
+                elif quota == "FN":
+                    filtered = [s for s in filtered if s.get("foreign_national_status") is True]
+                elif quota == "Regular":
+                    filtered = [s for s in filtered if not s.get("supernumerary_seat") and s.get("nri_category") == "Not Applicable" and not s.get("foreign_national_status")]
 
             total = len(filtered)
             start = (page - 1) * limit
             return filtered[start:start + limit], total
 
-    def get_student_by_apaar(self, apaar_id):
-        clean_target = self.clean_id(apaar_id)
+    def get_all_students_flat(self):
         if self.connected_to_mongo:
-            found = self.db.students.find_one({"apaar_id": apaar_id}, {"_id": 0})
+            return list(self.db.students.find({}, {"_id": 0}))
+        return self.memory_students
+
+    def get_student_by_apaar(self, identifier):
+        clean_target = self.clean_id(identifier)
+        if self.connected_to_mongo:
+            # Match apaar_id or student_id
+            found = self.db.students.find_one({
+                "$or": [
+                    {"apaar_id": identifier},
+                    {"student_id": identifier}
+                ]
+            }, {"_id": 0})
             if not found:
-                found = self.db.students.find_one({
-                    "$expr": {
-                        "$eq": [
-                            {"$replaceAll": {"input": "$apaar_id", "find": "-", "replacement": ""}},
-                            clean_target
-                        ]
-                    }
-                }, {"_id": 0})
+                for s in self.db.students.find({}, {"_id": 0}):
+                    if self.clean_id(s.get("apaar_id")) == clean_target or self.clean_id(s.get("student_id")) == clean_target:
+                        return s
             return found
         else:
             for s in self.memory_students:
-                if self.clean_id(s.get("apaar_id")) == clean_target or s.get("apaar_id") == apaar_id:
+                if (s.get("apaar_id") == identifier or 
+                    s.get("student_id") == identifier or 
+                    self.clean_id(s.get("apaar_id")) == clean_target or 
+                    self.clean_id(s.get("student_id")) == clean_target):
                     return s
             return None
 
@@ -217,6 +218,28 @@ class DatabaseManager:
         if not student_data.get("qr_token"):
             student_data["qr_token"] = f"APAAR-AUTH:{clean}:{student_data.get('aicte_id', '1-GEN')}:SEC{clean[-4:]}"
         
+        # Ensure standard fields
+        student_data.setdefault("abc_credits_total", 24)
+        student_data.setdefault("cgpa", 8.5)
+        student_data.setdefault("academic_history", [])
+        student_data.setdefault("swayam_nptel_credits", [])
+        student_data.setdefault("status", "Verified")
+        student_data.setdefault("kyc_status", "VERIFIED")
+        student_data.setdefault("biometric_verified", True)
+        student_data.setdefault("student_consent", True)
+        student_data.setdefault("consent_timestamp", datetime.now().isoformat())
+
+        if not student_data.get("degree_certificate"):
+            student_data["degree_certificate"] = {
+                "certificate_id": f"DEG-{student_data.get('branch', 'ENG')}-{clean[-4:]}",
+                "degree_name": student_data.get("program", "Bachelor of Technology"),
+                "degree_body": f"{student_data.get('institution', 'AICTE Approved Institute')} & AICTE",
+                "class_awarded": "First Class with Distinction",
+                "issue_date": datetime.now().strftime("%Y-%m-%d"),
+                "chancellor_sign": True,
+                "registrar_sign": True
+            }
+
         if self.connected_to_mongo:
             self.db.students.update_one(
                 {"apaar_id": student_data["apaar_id"]},
@@ -229,14 +252,43 @@ class DatabaseManager:
                 self.memory_students[existing_idx] = student_data
             else:
                 self.memory_students.append(student_data)
+
+        # Update institution enrolment count if found
+        self._increment_institution_enrolment(student_data)
         return student_data
 
-    def bulk_add_students(self, students_list):
-        added_count = 0
-        for s in students_list:
-            self.add_student(s)
-            added_count += 1
-        return added_count
+    def _increment_institution_enrolment(self, student_data):
+        inst_name = student_data.get("institution")
+        aicte_id = student_data.get("aicte_id")
+        branch = student_data.get("branch")
+        is_sup = student_data.get("supernumerary_seat")
+        is_nri = student_data.get("nri_category") in ["NRI", "NRI-Sponsored"]
+        is_fn = student_data.get("foreign_national_status")
+
+        institutions = self.get_institutions()
+        for inst in institutions:
+            if inst.get("name") == inst_name or inst.get("aicte_id") == aicte_id:
+                inst["actual_enrolment"] = inst.get("actual_enrolment", 0) + 1
+                if is_sup:
+                    inst["actual_supernumerary"] = inst.get("actual_supernumerary", 0) + 1
+                if is_nri:
+                    inst["actual_nri"] = inst.get("actual_nri", 0) + 1
+                if is_fn:
+                    inst["actual_fn"] = inst.get("actual_fn", 0) + 1
+
+                for prog in inst.get("programs", []):
+                    if prog.get("branch") == branch or prog.get("program") == student_data.get("program"):
+                        prog["actual_enrolment"] = prog.get("actual_enrolment", 0) + 1
+                        if is_sup:
+                            prog["supernumerary_enrolled"] = prog.get("supernumerary_enrolled", 0) + 1
+                        if is_nri:
+                            prog["nri_enrolled"] = prog.get("nri_enrolled", 0) + 1
+                        if is_fn:
+                            prog["fn_enrolled"] = prog.get("fn_enrolled", 0) + 1
+
+                if self.connected_to_mongo:
+                    self.db.institutions.update_one({"aicte_id": inst.get("aicte_id")}, {"$set": inst})
+                break
 
     def update_student(self, apaar_id, updates):
         if self.connected_to_mongo:
@@ -259,1115 +311,418 @@ class DatabaseManager:
             return len(self.memory_students) < init_len
 
     # -------------------------------------------------------------
-    # MULTI-LEVEL VERIFICATION WORKFLOW STATE MACHINE
+    # INSTITUTIONS & INTAKE MANAGEMENT
     # -------------------------------------------------------------
-    def get_workflows(self, role="AICTE_ADMIN", institution=None, status=None):
-        """
-        Fetches workflow applications based on role-based access control.
-        - COLLEGE_OPERATOR: sees their institution's submissions.
-        - INSTITUTION_VERIFIER: sees their institution's pending & reviewed submissions.
-        - AUTHORIZED_REVIEWER: sees all FLAGGED_REVIEW cases across institutes.
-        - AICTE_ADMIN: sees all records nationwide.
-        """
-        filter_doc = {}
-        if status and status != "ALL":
-            filter_doc["status"] = status
-
-        if role == "COLLEGE_OPERATOR" and institution:
-            filter_doc["institution"] = {"$regex": institution, "$options": "i"}
-        elif role == "INSTITUTION_VERIFIER" and institution:
-            filter_doc["institution"] = {"$regex": institution, "$options": "i"}
-        elif role == "AUTHORIZED_REVIEWER":
-            if not status or status == "ALL":
-                filter_doc["status"] = {"$in": ["FLAGGED_REVIEW", "REVIEW_CLEARED_APPROVED", "FRAUD_CONFIRMED_REJECTED"]}
-
+    def get_institutions(self):
         if self.connected_to_mongo:
-            cursor = self.db.workflows.find(filter_doc, {"_id": 0}).sort("submitted_at", -1)
-            return list(cursor)
-        else:
-            res = self.memory_workflows
-            if status and status != "ALL":
-                res = [w for w in res if w.get("status") == status]
-            if role in ["COLLEGE_OPERATOR", "INSTITUTION_VERIFIER"] and institution:
-                res = [w for w in res if institution.lower() in w.get("institution", "").lower()]
-            elif role == "AUTHORIZED_REVIEWER" and (not status or status == "ALL"):
-                res = [w for w in res if w.get("status") in ["FLAGGED_REVIEW", "REVIEW_CLEARED_APPROVED", "FRAUD_CONFIRMED_REJECTED"]]
-            return res
+            return list(self.db.institutions.find({}, {"_id": 0}))
+        return self.memory_institutions
 
-    def get_workflow_by_id(self, workflow_id):
+    def get_institution_by_id(self, aicte_id):
+        institutions = self.get_institutions()
+        for inst in institutions:
+            if inst.get("aicte_id") == aicte_id or inst.get("name").lower() == str(aicte_id).lower():
+                return inst
+        return None
+
+    def update_institution_intake(self, aicte_id, updates):
         if self.connected_to_mongo:
-            return self.db.workflows.find_one({"workflow_id": workflow_id}, {"_id": 0})
+            self.db.institutions.update_one({"aicte_id": aicte_id}, {"$set": updates})
         else:
-            return next((w for w in self.memory_workflows if w["workflow_id"] == workflow_id), None)
+            for inst in self.memory_institutions:
+                if inst.get("aicte_id") == aicte_id:
+                    inst.update(updates)
+                    break
+        return True
 
-    def submit_workflow_application(self, student_data, user):
+    # -------------------------------------------------------------
+    # AUTOMATED APAAR & INTAKE VALIDATION ENGINE (KEY REQUIREMENT 3)
+    # -------------------------------------------------------------
+    def validate_student_record(self, record, target_institution=None):
         """
-        College Operator submits a new student application for verification.
-        Initial State: SUBMITTED
+        Validates individual student record for:
+        1. Duplicate student records
+        2. Invalid/missing APAAR IDs
+        3. Admissions exceeding approved intake
+        4. Inconsistencies in student data
+        5. Potential duplicate enrolment across institutions.
         """
-        clean = self.clean_id(student_data.get("apaar_id", ""))
-        if len(clean) == 12 and "-" not in student_data.get("apaar_id", ""):
-            formatted_apaar = f"{clean[:4]}-{clean[4:8]}-{clean[8:]}"
-        else:
-            formatted_apaar = student_data.get("apaar_id", "")
+        errors = []
+        warnings = []
+        apaar_raw = str(record.get("apaar_id", "")).strip()
+        clean_apaar = self.clean_id(apaar_raw)
 
-        workflow_id = f"WF-2026-{int(datetime.now().timestamp() % 100000)}"
-        now = datetime.now().isoformat()
-        
-        record = {
-            "workflow_id": workflow_id,
-            "apaar_id": formatted_apaar,
-            "abc_id": student_data.get("abc_id") or f"ABC-2024-{clean[-6:]}",
-            "full_name": student_data.get("full_name"),
-            "dob": student_data.get("dob", "2004-01-01"),
-            "gender": student_data.get("gender", "Other"),
-            "email": student_data.get("email"),
-            "phone": student_data.get("phone", "+91 99999 00000"),
-            "institution": student_data.get("institution", user.get("institution", "AICTE Affiliated Institute")),
-            "aicte_id": student_data.get("aicte_id", "1-33271891"),
-            "program": student_data.get("program", "B.Tech Engineering"),
-            "branch": student_data.get("branch", "CSE"),
-            "admission_year": int(student_data.get("admission_year", 2024)),
-            "current_semester": int(student_data.get("current_semester", 1)),
-            "abc_credits_total": int(student_data.get("abc_credits_total", 24)),
-            "cgpa": float(student_data.get("cgpa", 8.0)),
-            "status": "SUBMITTED",
-            "submitted_by": f"{user.get('name', 'Operator')} ({user.get('role', 'COLLEGE_OPERATOR')})",
-            "submitted_at": now,
-            "assigned_to": f"Institution Verifier ({student_data.get('institution', 'DTU')})",
-            "rejection_remarks": None,
-            "flag_notes": None,
-            "audit_history": [
-                {
-                    "timestamp": now,
-                    "actor_name": user.get("name", "College Operator"),
-                    "actor_role": user.get("role", "COLLEGE_OPERATOR"),
-                    "action": "SUBMIT_RECORD",
-                    "remarks": student_data.get("submission_notes", "Initial student enrollment submission with academic credentials."),
-                    "prev_status": "DRAFT",
-                    "new_status": "SUBMITTED"
-                }
-            ]
-        }
+        # 1. Invalid or missing APAAR ID check
+        if not apaar_raw:
+            errors.append({
+                "code": "MISSING_APAAR_ID",
+                "field": "apaar_id",
+                "message": "APAAR ID is mandatory for AICTE student-level registration."
+            })
+        elif len(clean_apaar) != 12 or not clean_apaar.isdigit():
+            errors.append({
+                "code": "INVALID_APAAR_FORMAT",
+                "field": "apaar_id",
+                "message": f"Invalid APAAR ID '{apaar_raw}'. Must be exactly 12 numeric digits (format: XXXX-XXXX-XXXX)."
+            })
 
-        # Create in database
-        if self.connected_to_mongo:
-            self.db.workflows.insert_one(dict(record))
-            if "_id" in record:
-                del record["_id"]
-        else:
-            self.memory_workflows.insert(0, record)
+        # Find target institution
+        inst_name = record.get("institution") or (target_institution.get("name") if target_institution else "")
+        all_students = self.get_all_students_flat()
 
-        # Notify Institution Verifier
-        self.add_notification(
-            recipient_role="INSTITUTION_VERIFIER",
-            institution=record["institution"],
-            title="New Student Application Submitted",
-            message=f"{user.get('name')} submitted {record['full_name']} ({record['apaar_id']}) for verification.",
-            workflow_id=workflow_id
-        )
+        # 2. Duplicate Student Record check within same institution
+        same_inst_dups = [
+            s for s in all_students
+            if self.clean_id(s.get("apaar_id")) == clean_apaar and clean_apaar and
+            (s.get("institution", "").lower() == inst_name.lower() or s.get("aicte_id") == record.get("aicte_id"))
+        ]
+        if same_inst_dups:
+            errors.append({
+                "code": "DUPLICATE_STUDENT_RECORD",
+                "field": "apaar_id",
+                "message": f"Duplicate student record: APAAR ID '{apaar_raw}' is already registered in {inst_name} (Student ID: {same_inst_dups[0].get('student_id')})."
+            })
 
-        return record
+        # 3. Potential Duplicate Enrolment Across Institutions
+        cross_inst_dups = [
+            s for s in all_students
+            if self.clean_id(s.get("apaar_id")) == clean_apaar and clean_apaar and
+            s.get("institution", "").lower() != inst_name.lower() and
+            s.get("status") in ["Verified", "Enrolled", "Active"]
+        ]
+        if cross_inst_dups:
+            errors.append({
+                "code": "CROSS_INSTITUTION_DUPLICATE_ENROLMENT",
+                "field": "apaar_id",
+                "message": f"CRITICAL FRAUD ALERT: Student with APAAR ID '{apaar_raw}' is actively enrolled simultaneously at '{cross_inst_dups[0].get('institution')}' in program '{cross_inst_dups[0].get('program')}'. Dual full-time enrollment is prohibited under AICTE norms."
+            })
 
-    def process_workflow_action(self, workflow_id, action, remarks, user):
-        """
-        Executes State Transitions:
-        - INSTITUTION_VERIFIER:
-            - APPROVE -> INSTITUTION_APPROVED
-            - FLAG -> FLAGGED_REVIEW
-            - REJECT -> REJECTED_WITH_REMARKS
-        - AUTHORIZED_REVIEWER:
-            - CLEAR_FLAG -> REVIEW_CLEARED_APPROVED
-            - CONFIRM_FRAUD -> FRAUD_CONFIRMED_REJECTED
-            - RETURN_CORRECTION -> REJECTED_WITH_REMARKS
-        - AICTE_ADMIN:
-            - FINAL_APPROVE -> AICTE_FINAL_APPROVED (Auto-enrolled into live student registry!)
-            - OVERRIDE_REJECT -> REJECTED_WITH_REMARKS
-        - COLLEGE_OPERATOR:
-            - RESUBMIT -> RESUBMITTED
-        """
-        record = self.get_workflow_by_id(workflow_id)
-        if not record:
-            return None, "Workflow application not found."
+        # 4. Admissions Exceeding Approved Intake Check
+        inst_obj = target_institution
+        if not inst_obj and inst_name:
+            inst_obj = next((i for i in self.get_institutions() if i.get("name", "").lower() == inst_name.lower() or i.get("aicte_id") == record.get("aicte_id")), None)
 
-        prev_status = record.get("status")
-        new_status = prev_status
-        assigned_to = record.get("assigned_to")
-        rejection_remarks = record.get("rejection_remarks")
-        flag_notes = record.get("flag_notes")
-        now = datetime.now().isoformat()
-        user_role = user.get("role", "")
-        user_name = user.get("name", "Authority")
-
-        if action == "INSTITUTION_APPROVE":
-            new_status = "INSTITUTION_APPROVED"
-            assigned_to = "AICTE Central Admin Bureau"
-            rejection_remarks = None
-            self.add_notification("AICTE_ADMIN", "All", "Institution Approved Record", f"{record['full_name']} from {record['institution']} is ready for final AICTE seal.", workflow_id)
-
-        elif action == "FLAG_FOR_REVIEW":
-            new_status = "FLAGGED_REVIEW"
-            flag_notes = remarks or "Flagged by Institution Verifier for suspicious credentials or dual enrollment."
-            assigned_to = "Authorized Reviewer (Grievance Cell)"
-            self.add_notification("AUTHORIZED_REVIEWER", "All", "Case Flagged for Review", f"{record['full_name']} flagged: {flag_notes}", workflow_id)
-
-        elif action == "REJECT_WITH_REMARKS":
-            new_status = "REJECTED_WITH_REMARKS"
-            rejection_remarks = remarks or "Returned for document / credit correction."
-            assigned_to = f"Returned to {record.get('submitted_by', 'College Operator')}"
-            self.add_notification("COLLEGE_OPERATOR", record["institution"], "Record Returned with Remarks", f"{record['full_name']} returned: {rejection_remarks}", workflow_id)
-
-        elif action == "CLEAR_FLAG":
-            new_status = "INSTITUTION_APPROVED"
-            assigned_to = "AICTE Central Admin Bureau"
-            flag_notes = f"RESOLVED: {remarks}"
-            self.add_notification("AICTE_ADMIN", "All", "Flag Cleared by Reviewer", f"Reviewer cleared flag for {record['full_name']}. Ready for final seal.", workflow_id)
-
-        elif action == "CONFIRM_FRAUD":
-            new_status = "FRAUD_CONFIRMED_REJECTED"
-            assigned_to = "Flagged & Blocked (Permanent AICTE Blacklist)"
-            flag_notes = f"FRAUD CONFIRMED: {remarks}"
-            self.add_notification("AICTE_ADMIN", "All", "Fraud Confirmed Alert", f"Fraud confirmed for {record['full_name']} ({record['apaar_id']}).", workflow_id)
-
-        elif action == "AICTE_FINAL_APPROVE":
-            new_status = "AICTE_FINAL_APPROVED"
-            assigned_to = "Completed (Enrolled in National APAAR Registry)"
-            rejection_remarks = None
+        if inst_obj:
+            branch_name = record.get("branch", "")
+            prog_name = record.get("program", "")
+            prog = next((p for p in inst_obj.get("programs", []) if p.get("branch", "").lower() == branch_name.lower() or p.get("program", "").lower() == prog_name.lower()), None)
             
-            # Automatically enroll into live verified students database!
-            student_doc = {
-                "apaar_id": record["apaar_id"],
-                "abc_id": record["abc_id"],
-                "full_name": record["full_name"],
-                "dob": record.get("dob", "2004-01-01"),
-                "gender": record.get("gender", "Other"),
-                "email": record.get("email"),
-                "phone": record.get("phone"),
-                "institution": record["institution"],
-                "aicte_id": record["aicte_id"],
-                "program": record["program"],
-                "branch": record["branch"],
-                "admission_year": record["admission_year"],
-                "current_semester": record["current_semester"],
-                "abc_credits_total": record["abc_credits_total"],
-                "cgpa": record["cgpa"],
-                "kyc_status": "VERIFIED",
-                "status": "Verified",
-                "biometric_verified": True,
-                "photo_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
-                "qr_token": f"APAAR-AUTH:{self.clean_id(record['apaar_id'])}:{record['aicte_id']}:SEC-FINAL-2026",
-                "academic_history": [
-                    {"semester": 1, "credits": 22, "sgpa": record["cgpa"], "status": "Passed"}
-                ],
-                "compliance_notes": f"Officially approved by AICTE Central Admin ({user_name}) via Multi-Level Verification Workflow."
-            }
-            self.add_student(student_doc)
-            self.add_notification("COLLEGE_OPERATOR", record["institution"], "Student Officially Enrolled!", f"{record['full_name']} is now live on the APAAR National Registry & Verifiable QR Scanner.", workflow_id)
+            is_supernumerary = bool(record.get("supernumerary_seat") or (record.get("supernumerary_type") and record.get("supernumerary_type") != "None"))
+            is_nri = record.get("nri_category") in ["NRI", "NRI-Sponsored"]
+            is_fn = bool(record.get("foreign_national_status") or (record.get("passport_country") and record.get("passport_country") not in ["None", "India", ""]))
 
-        elif action == "RESUBMIT":
-            new_status = "RESUBMITTED"
-            assigned_to = f"Institution Verifier ({record['institution']})"
-            rejection_remarks = None
-            self.add_notification("INSTITUTION_VERIFIER", record["institution"], "Corrected Record Resubmitted", f"Operator resubmitted {record['full_name']} with corrections.", workflow_id)
+            if prog:
+                appr_intake = prog.get("approved_intake", 0)
+                act_enr = prog.get("actual_enrolment", 0)
 
-        # Audit History Entry
-        audit_entry = {
-            "timestamp": now,
-            "actor_name": user_name,
-            "actor_role": user_role,
-            "action": action,
-            "remarks": remarks or f"Transitioned from {prev_status} to {new_status}",
-            "prev_status": prev_status,
-            "new_status": new_status
-        }
+                # Regular seat check
+                if not is_supernumerary and not is_nri and not is_fn:
+                    if act_enr >= appr_intake:
+                        errors.append({
+                            "code": "ADMISSION_EXCEEDING_APPROVED_INTAKE",
+                            "field": "approved_intake",
+                            "message": f"ADMISSION VIOLATION: Branch '{prog.get('branch', branch_name)}' has exceeded AICTE Approved Intake ({act_enr}/{appr_intake} seats filled). Excess admission is strictly prohibited."
+                        })
+                    elif act_enr >= appr_intake - 2:
+                        warnings.append({
+                            "code": "NEAR_APPROVED_INTAKE_CAP",
+                            "field": "approved_intake",
+                            "message": f"Branch '{prog.get('branch', branch_name)}' is approaching approved intake capacity ({act_enr}/{appr_intake} seats filled)."
+                        })
 
-        updates = {
-            "status": new_status,
-            "assigned_to": assigned_to,
-            "rejection_remarks": rejection_remarks,
-            "flag_notes": flag_notes
-        }
+                # Supernumerary quota check (Max 10-15%)
+                if is_supernumerary:
+                    sup_appr = prog.get("supernumerary_approved", 0)
+                    sup_enr = prog.get("supernumerary_enrolled", 0)
+                    if sup_enr >= sup_appr:
+                        errors.append({
+                            "code": "EXCEEDING_SUPERNUMERARY_QUOTA",
+                            "field": "supernumerary_seats",
+                            "message": f"SUPERNUMERARY QUOTA VIOLATION: Exceeds approved supernumerary capacity ({sup_enr}/{sup_appr} seats filled)."
+                        })
 
-        if self.connected_to_mongo:
-            self.db.workflows.update_one(
-                {"workflow_id": workflow_id},
-                {
-                    "$set": updates,
-                    "$push": {"audit_history": audit_entry}
-                }
-            )
-        else:
-            record.update(updates)
-            record["audit_history"].append(audit_entry)
+                # NRI quota check
+                if is_nri:
+                    nri_appr = prog.get("nri_approved", 0)
+                    nri_enr = prog.get("nri_enrolled", 0)
+                    if nri_enr >= nri_appr:
+                        errors.append({
+                            "code": "EXCEEDING_NRI_QUOTA",
+                            "field": "nri_category",
+                            "message": f"NRI QUOTA VIOLATION: Exceeds sanctioned 5% NRI seats ({nri_enr}/{nri_appr} filled)."
+                        })
 
-        record.update(updates)
-        record.setdefault("audit_history", []).append(audit_entry)
-        return record, None
+                # Foreign National quota check
+                if is_fn:
+                    fn_appr = prog.get("fn_approved", 0)
+                    fn_enr = prog.get("fn_enrolled", 0)
+                    if fn_enr >= fn_appr:
+                        errors.append({
+                            "code": "EXCEEDING_FN_QUOTA",
+                            "field": "foreign_national_status",
+                            "message": f"FOREIGN NATIONAL QUOTA VIOLATION: Exceeds sanctioned FN seats ({fn_enr}/{fn_appr} filled)."
+                        })
 
-    def get_admin_failed_cases(self, institution=None):
-        """
-        Returns records where AI detected verification failure, anomaly,
-        duplicate identity, or missing documents for Institution & AICTE Admin approval.
-        """
-        all_cases = self.get_workflows(role="AICTE_ADMIN", institution=institution, status="ALL")
-        failed_cases = []
-        for c in all_cases:
-            report = c.get("ai_verification_report") or {}
-            is_failed = (
-                c.get("status") in ["FLAGGED_REVIEW", "REJECTED_WITH_REMARKS", "FRAUD_CONFIRMED_REJECTED", "SUBMITTED"]
-                or report.get("status") in ["AI_FLAGGED_DISCREPANCY", "AI_REJECTED_FRAUD", "CONSENT_DENIED"]
-                or (report.get("trust_score") is not None and report.get("trust_score") < 85.0)
-                or len(report.get("flags") or []) > 0
-            )
-            if is_failed:
-                failed_cases.append(c)
-        return failed_cases
-
-    def admin_resolve_failed_case(self, workflow_id, decision, remarks, admin_user=None):
-        """
-        Enables AICTE or Institution Admin to approve or reject cases where AI detected verification failure.
-        - decision == 'APPROVE': overrides AI flag, enrolls student into live repository & issues APAAR ID
-        - decision == 'REJECT': confirms failure with clear remarks for correction
-        """
-        user = admin_user or {"name": "AICTE Institution Administrator", "role": "AICTE_ADMIN"}
-        action = "AICTE_FINAL_APPROVE" if str(decision).upper() == "APPROVE" else "REJECT_WITH_REMARKS"
-        return self.process_workflow_action(workflow_id, action, remarks, user)
-
-    def add_notification(self, recipient_role, institution, title, message, workflow_id=None):
-        notif = {
-            "id": f"NOTIF-{int(datetime.now().timestamp() * 1000)}",
-            "recipient_role": recipient_role,
-            "institution": institution,
-            "title": title,
-            "message": message,
-            "timestamp": datetime.now().isoformat(),
-            "workflow_id": workflow_id,
-            "read": False
-        }
-        if self.connected_to_mongo:
-            self.db.notifications.insert_one(dict(notif))
-            if "_id" in notif:
-                del notif["_id"]
-        else:
-            self.memory_notifications.insert(0, notif)
-        return notif
-
-    def get_notifications(self, role="AICTE_ADMIN", institution=None):
-        if self.connected_to_mongo:
-            filter_doc = {"$or": [{"recipient_role": role}, {"recipient_role": "ALL"}]}
-            if institution and role != "AICTE_ADMIN":
-                filter_doc["$or"].extend([{"institution": institution}, {"institution": "All"}])
-            cursor = self.db.notifications.find(filter_doc, {"_id": 0}).sort("timestamp", -1).limit(25)
-            return list(cursor)
-        else:
-            res = [n for n in self.memory_notifications if n.get("recipient_role") in [role, "ALL"]]
-            return res[:25]
-
-    def get_workflow_metrics(self):
-        records = self.get_workflows(role="AICTE_ADMIN")
-        total = len(records)
-        submitted = sum(1 for r in records if r.get("status") in ["SUBMITTED", "RESUBMITTED"])
-        inst_approved = sum(1 for r in records if r.get("status") == "INSTITUTION_APPROVED")
-        flagged = sum(1 for r in records if r.get("status") == "FLAGGED_REVIEW")
-        rejected = sum(1 for r in records if r.get("status") == "REJECTED_WITH_REMARKS")
-        final_approved = sum(1 for r in records if r.get("status") == "AICTE_FINAL_APPROVED")
-        fraud_blocked = sum(1 for r in records if r.get("status") == "FRAUD_CONFIRMED_REJECTED")
-
-        return {
-            "total_cases": total,
-            "pending_institution_verification": submitted,
-            "pending_aicte_final_approval": inst_approved,
-            "flagged_for_reviewer": flagged,
-            "returned_for_correction": rejected,
-            "officially_enrolled": final_approved,
-            "fraud_blocked": fraud_blocked
-        }
-
-    # -------------------------------------------------------------
-    # AI-POWERED DATA QUALITY ASSISTANT ENGINE
-    # -------------------------------------------------------------
-    def analyze_record_quality(self, record):
-        """
-        Performs AI & rule-based quality evaluation on a student record:
-        - Checks missing mandatory fields and format rules
-        - Identifies spelling mistakes & abbreviation in colleges and branches
-        - Detects out-of-bounds metrics (CGPA, future admission years)
-        - Computes hygiene score (0 - 100)
-        - Generates natural-language AI insights & suggested 1-click fixes
-        """
-        issues = []
-        suggested_fixes = {}
-        penalty = 0
-
-        raw_apaar = str(record.get("raw_apaar_id") or record.get("apaar_id") or "").strip()
-        raw_name = str(record.get("raw_full_name") or record.get("full_name") or "").strip()
-        raw_inst = str(record.get("raw_institution") or record.get("institution") or "").strip()
-        raw_branch = str(record.get("raw_branch") or record.get("branch") or "").strip()
-        raw_email = str(record.get("raw_email") or record.get("email") or "").strip()
-        raw_phone = str(record.get("raw_phone") or record.get("phone") or "").strip()
-        raw_cgpa = record.get("raw_cgpa") if record.get("raw_cgpa") is not None else record.get("cgpa")
-        raw_abc = str(record.get("raw_abc_id") or record.get("abc_id") or "").strip()
-
-        # 1. APAAR ID Validation
-        clean_apaar = self.clean_id(raw_apaar)
-        if not raw_apaar:
-            issues.append({
-                "field": "apaar_id",
-                "severity": "CRITICAL",
-                "type": "MISSING_MANDATORY",
-                "message": "APAAR ID is missing.",
-                "explanation": "Every student must possess a unique 12-digit APAAR ID under the NEP 2020 mandate."
+        # 5. Inconsistencies in Student Data
+        if not record.get("student_id") or not str(record.get("student_id")).strip():
+            errors.append({
+                "code": "MISSING_STUDENT_ID",
+                "field": "student_id",
+                "message": "Student Institutional ID (Roll/Registration Number) is required."
             })
-            penalty += 30
-        elif len(clean_apaar) != 12:
-            issues.append({
-                "field": "apaar_id",
-                "severity": "HIGH",
-                "type": "INVALID_FORMAT",
-                "message": f"Invalid APAAR length ({len(clean_apaar)} chars). Must be exactly 12 digits.",
-                "explanation": "The National Academic Depository requires 12 numeric digits in 4-4-4 format."
-            })
-            penalty += 20
-            if len(clean_apaar) == 11:
-                suggested_fixes["apaar_id"] = f"{clean_apaar[:4]}-{clean_apaar[4:8]}-{clean_apaar[8:]}0"
-        else:
-            suggested_fixes["apaar_id"] = f"{clean_apaar[:4]}-{clean_apaar[4:8]}-{clean_apaar[8:]}"
 
-        # 2. Student Full Name Check
-        if not raw_name:
-            issues.append({
+        if not record.get("full_name") or len(str(record.get("full_name")).strip()) < 2:
+            errors.append({
+                "code": "INVALID_STUDENT_NAME",
                 "field": "full_name",
-                "severity": "CRITICAL",
-                "type": "MISSING_MANDATORY",
-                "message": "Student Full Name is missing.",
-                "explanation": "Legal name must match Aadhaar & 10th certificate."
+                "message": "Valid student full name is required."
             })
-            penalty += 25
-        else:
-            # Check for irregular casing or extra spaces
-            cleaned_name = " ".join([word.capitalize() for word in raw_name.split()])
-            if cleaned_name != raw_name:
-                issues.append({
-                    "field": "full_name",
-                    "severity": "MEDIUM",
-                    "type": "FORMATTING_TYPO",
-                    "message": f"Irregular casing or whitespace: '{raw_name}'",
-                    "explanation": "AI normalized name to standard title case."
-                })
-                suggested_fixes["full_name"] = cleaned_name
-                penalty += 10
-            elif len(raw_name.split()) < 2:
-                issues.append({
-                    "field": "full_name",
-                    "severity": "LOW",
-                    "type": "POTENTIAL_INCOMPLETE",
-                    "message": "Single name detected without surname.",
-                    "explanation": "Ensure single name matches official government identity."
-                })
-                penalty += 5
 
-        # 3. Institution Name Typos & Standardization
-        inst_lower = raw_inst.lower()
-        if not raw_inst:
-            issues.append({
-                "field": "institution",
-                "severity": "CRITICAL",
-                "type": "MISSING_MANDATORY",
-                "message": "Institution name is missing.",
-                "explanation": "Mandatory AICTE institutional affiliation required."
+        if record.get("foreign_national_status") and (not record.get("passport_country") or record.get("passport_country") in ["None", "India", ""]):
+            errors.append({
+                "code": "INCONSISTENT_FN_DATA",
+                "field": "passport_country",
+                "message": "Foreign National status is marked True, but valid passport country is missing."
             })
-            penalty += 25
-        elif inst_lower in INSTITUTION_NORMALIZATION_MAP:
-            standard_inst = INSTITUTION_NORMALIZATION_MAP[inst_lower]
-            if standard_inst != raw_inst:
-                issues.append({
-                    "field": "institution",
-                    "severity": "HIGH",
-                    "type": "SPELLING_ABBREVIATION",
-                    "message": f"Non-standard institution name: '{raw_inst}'",
-                    "explanation": f"AI identified likely match: '{standard_inst}'. Standardization avoids rejection during AICTE audits."
-                })
-                suggested_fixes["institution"] = standard_inst
-                penalty += 15
-        else:
-            suggested_fixes["institution"] = raw_inst
 
-        # 4. Branch & Program Normalization
-        branch_lower = raw_branch.lower()
-        if not raw_branch:
-            issues.append({
-                "field": "branch",
-                "severity": "HIGH",
-                "type": "MISSING_MANDATORY",
-                "message": "Engineering branch or program is missing.",
-                "explanation": "AICTE requires approved nomenclature for degree award."
+        if record.get("oci_status") and not record.get("oci_number"):
+            warnings.append({
+                "code": "INCOMPLETE_OCI_DATA",
+                "field": "oci_number",
+                "message": "OCI status marked True without OCI card serial number."
             })
-            penalty += 20
-        elif branch_lower in BRANCH_NORMALIZATION_MAP:
-            norm = BRANCH_NORMALIZATION_MAP[branch_lower]
-            if norm["branch"] != raw_branch:
-                issues.append({
-                    "field": "branch",
-                    "severity": "MEDIUM",
-                    "type": "STANDARDIZATION_SUGGESTION",
-                    "message": f"Informal branch name: '{raw_branch}'",
-                    "explanation": f"Mapped to official AICTE designation: '{norm['program']}' ({norm['branch']})."
-                })
-                suggested_fixes["branch"] = norm["branch"]
-                suggested_fixes["program"] = norm["program"]
-                penalty += 10
-        else:
-            suggested_fixes["branch"] = raw_branch
-            suggested_fixes["program"] = f"B.Tech {raw_branch}"
 
-        # 5. CGPA Range Validation
-        try:
-            val_cgpa = float(raw_cgpa) if raw_cgpa is not None else 8.0
-            if val_cgpa > 10.0:
-                issues.append({
-                    "field": "cgpa",
-                    "severity": "HIGH",
-                    "type": "OUT_OF_BOUNDS",
-                    "message": f"CGPA value {val_cgpa} exceeds maximum scale of 10.0.",
-                    "explanation": "AI detected likely percentage entered instead of 10-point GPA or typo."
-                })
-                suggested_fixes["cgpa"] = round(val_cgpa / 10.0, 2) if val_cgpa <= 100 else 9.0
-                penalty += 15
-            elif val_cgpa < 0.0:
-                issues.append({
-                    "field": "cgpa",
-                    "severity": "HIGH",
-                    "type": "INVALID_VALUE",
-                    "message": f"Negative CGPA {val_cgpa} is invalid.",
-                    "explanation": "CGPA must be positive."
-                })
-                suggested_fixes["cgpa"] = 7.5
-                penalty += 15
-            else:
-                suggested_fixes["cgpa"] = val_cgpa
-        except (ValueError, TypeError):
-            issues.append({
-                "field": "cgpa",
-                "severity": "MEDIUM",
-                "type": "TYPE_ERROR",
-                "message": "CGPA must be a numeric value.",
-                "explanation": "Ensure decimal format e.g. 8.75."
+        if record.get("supernumerary_seat") and (not record.get("supernumerary_type") or record.get("supernumerary_type") == "None"):
+            errors.append({
+                "code": "INCONSISTENT_SUPERNUMERARY_DATA",
+                "field": "supernumerary_type",
+                "message": "Supernumerary seat is marked True, but quota category (TFW, EWS, PMSSS, Sports) is not specified."
             })
-            suggested_fixes["cgpa"] = 8.0
-            penalty += 10
 
-        # 6. Email Format Check
-        if raw_email:
-            if not re.match(r'^[\w\.-]+@[\w\.-]+\.\w+$', raw_email) or "@@" in raw_email or ".." in raw_email:
-                issues.append({
-                    "field": "email",
-                    "severity": "HIGH",
-                    "type": "INVALID_FORMAT",
-                    "message": f"Malformed email address: '{raw_email}'",
-                    "explanation": "Double symbols or syntax error detected in institutional email."
-                })
-                cleaned_email = re.sub(r'@+', '@', raw_email)
-                cleaned_email = re.sub(r'\.+', '.', cleaned_email)
-                suggested_fixes["email"] = cleaned_email
-                penalty += 12
-            else:
-                suggested_fixes["email"] = raw_email
-
-        # 7. ABC ID Format
-        if not raw_abc:
-            issues.append({
-                "field": "abc_id",
-                "severity": "HIGH",
-                "type": "MISSING_MANDATORY",
-                "message": "Academic Bank of Credits (ABC) ID is missing.",
-                "explanation": "ABC ID links student credits to the National Academic Depository."
+        if record.get("student_consent") is False:
+            errors.append({
+                "code": "CONSENT_NOT_GRANTED",
+                "field": "student_consent",
+                "message": "Mandatory student consent under Digital Personal Data Protection Act is not granted."
             })
-            suggested_fixes["abc_id"] = f"ABC-2024-{clean_apaar[-6:] if len(clean_apaar)>=6 else '102938'}"
-            penalty += 18
-        elif not re.match(r'^ABC-\d{4}-\d{6}$', raw_abc):
-            issues.append({
-                "field": "abc_id",
-                "severity": "LOW",
-                "type": "FORMAT_INCONSISTENCY",
-                "message": f"Non-standard ABC format: '{raw_abc}'. Expected 'ABC-YYYY-XXXXXX'",
-                "explanation": "Missing hyphens or date segment."
-            })
-            digits_abc = re.sub(r'\D', '', raw_abc)
-            if len(digits_abc) >= 10:
-                suggested_fixes["abc_id"] = f"ABC-{digits_abc[:4]}-{digits_abc[4:10]}"
-            else:
-                suggested_fixes["abc_id"] = f"ABC-2024-{clean_apaar[-6:] if len(clean_apaar)>=6 else '884920'}"
-            penalty += 8
-        else:
-            suggested_fixes["abc_id"] = raw_abc
 
-        # Compute Quality Score
-        quality_score = max(5, 100 - penalty)
-        status = "EXCELLENT" if quality_score >= 90 else "GOOD" if quality_score >= 75 else "NEEDS_CLEANING" if quality_score >= 50 else "CRITICAL_ERRORS"
-
+        is_valid = len(errors) == 0
         return {
-            "record_id": record.get("id") or record.get("workflow_id") or clean_apaar or "TEMP-REC",
-            "quality_score": quality_score,
-            "status": status,
-            "issues_count": len(issues),
-            "issues": issues,
-            "suggested_fixes": suggested_fixes,
-            "original_record": record,
-            "ai_summary": f"Identified {len(issues)} data quality issue(s). Overall hygiene score: {quality_score}/100. " +
-                          ("High confidence auto-corrections available for 1-click cleanup." if issues else "Record is clean and ready for submission.")
+            "is_valid": is_valid,
+            "status": "VALID" if is_valid else "INVALID",
+            "errors": errors,
+            "warnings": warnings,
+            "record": record
         }
 
-    def analyze_batch_quality(self, batch_records):
-        results = [self.analyze_record_quality(r) for r in batch_records]
-        total_records = len(results)
-        if total_records == 0:
-            return {"overall_score": 100, "results": [], "department_stats": {}}
+    def validate_batch(self, batch_records, target_institution=None):
+        results = []
+        valid_count = 0
+        flagged_count = 0
 
-        avg_score = round(sum(r["quality_score"] for r in results) / total_records, 1)
-        clean_count = sum(1 for r in results if r["quality_score"] >= 90)
-        flagged_count = sum(1 for r in results if r["issues_count"] > 0)
-        total_issues = sum(r["issues_count"] for r in results)
-
-        # Department breakdown
-        dept_scores = {}
-        dept_counts = {}
-        for r in results:
-            orig = r["original_record"]
-            dept = orig.get("department") or orig.get("branch") or "General"
-            dept_scores[dept] = dept_scores.get(dept, 0) + r["quality_score"]
-            dept_counts[dept] = dept_counts.get(dept, 0) + 1
-
-        dept_summary = {
-            d: {
-                "score": round(dept_scores[d] / dept_counts[d], 1),
-                "count": dept_counts[d]
-            }
-            for d in dept_scores
-        }
+        for r in batch_records:
+            val = self.validate_student_record(r, target_institution)
+            if val["is_valid"]:
+                valid_count += 1
+            else:
+                flagged_count += 1
+            results.append(val)
 
         return {
-            "total_records": total_records,
-            "overall_score": avg_score,
-            "clean_records": clean_count,
-            "flagged_records": flagged_count,
-            "total_issues": total_issues,
-            "department_breakdown": dept_summary,
+            "total_submitted": len(batch_records),
+            "valid_count": valid_count,
+            "flagged_count": flagged_count,
             "results": results
         }
 
-    def get_sample_dirty_batch(self):
-        return [dict(d) for d in DIRTY_BATCH_DATA]
+    def submit_institution_admissions(self, records, target_institution=None, user=None):
+        validation = self.validate_batch(records, target_institution)
+        saved_records = []
+        flagged_records = []
 
-    # -------------------------------------------------------------
-    # AI-BASED VERIFICATION ENGINE FOR NEW STUDENT APAAR ID
-    # -------------------------------------------------------------
-    @staticmethod
-    def _levenshtein_distance(s1, s2):
-        if len(s1) < len(s2):
-            return DatabaseManager._levenshtein_distance(s2, s1)
-        if len(s2) == 0:
-            return len(s1)
-        prev_row = list(range(len(s2) + 1))
-        for i, c1 in enumerate(s1):
-            curr_row = [i + 1]
-            for j, c2 in enumerate(s2):
-                insertions = prev_row[j + 1] + 1
-                deletions = curr_row[j] + 1
-                substitutions = prev_row[j] + (c1 != c2)
-                curr_row.append(min(insertions, deletions, substitutions))
-            prev_row = curr_row
-        return prev_row[-1]
+        actor_name = user.get("name", "Institution Operator") if user else "Institution Registrar"
+        inst_name = target_institution.get("name", "AICTE Approved Institution") if target_institution else "AICTE Approved Institution"
 
-    @staticmethod
-    def calculate_name_similarity(name1, name2):
-        if not name1 or not name2:
-            return 0.0
-        n1 = re.sub(r'[^a-zA-Z0-9 ]', '', str(name1)).strip().lower()
-        n2 = re.sub(r'[^a-zA-Z0-9 ]', '', str(name2)).strip().lower()
-        if n1 == n2:
-            return 100.0
-
-        t1 = set(n1.split())
-        t2 = set(n2.split())
-        intersection = t1.intersection(t2)
-        union = t1.union(t2)
-        jaccard = (len(intersection) / len(union)) * 100 if union else 0.0
-
-        dist = DatabaseManager._levenshtein_distance(n1, n2)
-        max_len = max(len(n1), len(n2), 1)
-        lev_ratio = max(0.0, (1.0 - (dist / max_len))) * 100
-
-        return round(0.4 * jaccard + 0.6 * lev_ratio, 1)
-
-    def get_ai_verification_presets(self):
-        return [
-            {
-                "preset_id": "CLEAN_APPLICANT",
-                "title": "Priya Sharma (Direct Clean Admission)",
-                "badge": "98% AI Match • Clean Fast-Track",
-                "description": "Standard B.Tech CSE applicant. Aadhaar KYC demographic match 100%, verified 12th marksheet, active AICTE affiliation.",
-                "payload": {
-                    "full_name": "Priya Sharma",
-                    "aadhaar_number": "5544-3322-1100",
-                    "student_consent": True,
-                    "dob": "2004-06-15",
-                    "gender": "Female",
-                    "email": "priya.sharma24@dtu.ac.in",
-                    "phone": "+91 98110 33445",
-                    "institution": "Delhi Technological University",
-                    "aicte_id": "1-33271891",
-                    "program": "B.Tech Computer Science & Engineering",
-                    "branch": "CSE",
-                    "admission_year": 2024,
-                    "current_semester": 1,
-                    "cgpa": 8.85,
-                    "document_name": "Class_XII_CBSE_Marksheet_Verified.pdf",
-                    "document_type": "CLASS_12_MARKSHEET",
-                    "document_uploaded": True
-                }
-            },
-            {
-                "preset_id": "TYPO_DISCREPANCY",
-                "title": "Rohan Mehta (Aadhaar Typo Discrepancy)",
-                "badge": "76% AI Match • AI Auto-Fix Suggested",
-                "description": "Student input says 'Rohan Mehta' but Aadhaar record reads 'Rohan Menta'. AI suggests normalization.",
-                "payload": {
-                    "full_name": "Rohan Mehta",
-                    "aadhaar_number": "8877-6655-4433",
-                    "student_consent": True,
-                    "dob": "2003-11-20",
-                    "gender": "Male",
-                    "email": "rohan.mehta@vjti.ac.in",
-                    "phone": "+91 98200 44556",
-                    "institution": "Veermata Jijabai Technological Institute (VJTI Mumbai)",
-                    "aicte_id": "1-44910283",
-                    "program": "B.Tech Artificial Intelligence & Data Science",
-                    "branch": "AI & DS",
-                    "admission_year": 2024,
-                    "current_semester": 1,
-                    "cgpa": 8.40,
-                    "document_name": "VJTI_Seat_Allotment_Slip.pdf",
-                    "document_type": "ADMISSION_ALLOTMENT",
-                    "document_uploaded": True
-                }
-            },
-            {
-                "preset_id": "DUAL_ENROLLMENT_FRAUD",
-                "title": "Vikramaditya Rao (Ghost Student / Dual Seat Fraud)",
-                "badge": "32% AI Score • Critical Fraud Alert",
-                "description": "Student attempts APAAR enrollment at DTU while already actively enrolled at Apex Institute of Tech.",
-                "payload": {
-                    "full_name": "Vikramaditya Rao",
-                    "aadhaar_number": "9999-0000-1111",
-                    "student_consent": True,
-                    "dob": "2002-04-10",
-                    "gender": "Male",
-                    "email": "vikram.rao@dtu.ac.in",
-                    "phone": "+91 99999 11111",
-                    "institution": "Delhi Technological University",
-                    "aicte_id": "1-33271891",
-                    "program": "B.Tech Mechanical Engineering",
-                    "branch": "ME",
-                    "admission_year": 2024,
-                    "current_semester": 1,
-                    "cgpa": 6.10,
-                    "document_name": "Transfer_Certificate_Unverified.pdf",
-                    "document_type": "TRANSFER_CERTIFICATE",
-                    "document_uploaded": True
-                }
-            },
-            {
-                "preset_id": "MISSING_DOCUMENTS",
-                "title": "Sneha Reddy (Missing Mandatory Marksheet)",
-                "badge": "64% AI Score • Missing Document Alert",
-                "description": "Student consent and demographics verified, but mandatory Class XII marksheet document is missing.",
-                "payload": {
-                    "full_name": "Sneha Reddy",
-                    "aadhaar_number": "3322-1144-5566",
-                    "student_consent": True,
-                    "dob": "2004-01-25",
-                    "gender": "Female",
-                    "email": "sneha.reddy@coep.ac.in",
-                    "phone": "+91 98490 22331",
-                    "institution": "College of Engineering Pune (COEP)",
-                    "aicte_id": "1-55109284",
-                    "program": "B.Tech Electronics & Telecommunication",
-                    "branch": "ENTC",
-                    "admission_year": 2024,
-                    "current_semester": 1,
-                    "cgpa": 8.70,
-                    "document_name": "",
-                    "document_type": "NONE",
-                    "document_uploaded": False
-                }
-            }
-        ]
-
-    def ai_verify_new_student(self, data, auto_enroll=False, user=None):
-        """
-        AI-Based Verification for APAAR ID verification & issuance of new students.
-        Executes:
-        1. Aadhaar identity authentication & student consent validation.
-        2. Demographics matching & normalization.
-        3. National central repository duplicate & ghost student detection (Anti-Fraud).
-        4. AICTE institutional affiliation & program compliance check.
-        5. Academic document integrity evaluation.
-        6. AI Trust Score calculation & APAAR ID generation.
-        7. Automated workflow application submission & smart alert generation.
-        """
-        now = datetime.now().isoformat()
-        full_name = str(data.get("full_name") or "").strip()
-        aadhaar_raw = str(data.get("aadhaar_number") or "").strip()
-        student_consent = bool(data.get("student_consent", False))
-        dob = str(data.get("dob") or "2004-01-01").strip()
-        gender = str(data.get("gender") or "Not Specified").strip()
-        institution = str(data.get("institution") or "").strip()
-        aicte_id = str(data.get("aicte_id") or "").strip()
-        branch = str(data.get("branch") or "CSE").strip()
-        program = str(data.get("program") or f"B.Tech {branch}").strip()
-        admission_year = int(data.get("admission_year") or 2024)
-        email = str(data.get("email") or f"{full_name.lower().replace(' ', '.')}@ac.in").strip()
-        phone = str(data.get("phone") or "+91 98000 00000").strip()
-        cgpa = float(data.get("cgpa") or 8.0)
-        document_uploaded = bool(data.get("document_uploaded", True))
-        document_name = str(data.get("document_name") or "MarkSheet_Document.pdf").strip()
-
-        # STAGE 0: Consent Verification (Mandatory under Aadhaar Act & AICTE guidelines)
-        if not student_consent:
-            return {
-                "success": False,
-                "verified": False,
-                "status": "CONSENT_DENIED",
-                "message": "Student Consent Required: Verification cannot proceed without student authorization under the Aadhaar Act & AICTE Digilocker Guidelines.",
-                "ai_trust_score": 0.0,
-                "flags": ["Student consent checkbox was not checked."]
-            }
-
-        if not full_name:
-            return {
-                "success": False,
-                "verified": False,
-                "status": "INVALID_INPUT",
-                "message": "Student Full Name is required.",
-                "ai_trust_score": 0.0
-            }
-
-        clean_aadhaar = self.clean_id(aadhaar_raw)
-        if not clean_aadhaar:
-            clean_aadhaar = "554433221100"
-
-        # Masked Aadhaar format for privacy compliance
-        masked_aadhaar = f"XXXX-XXXX-{clean_aadhaar[-4:]}" if len(clean_aadhaar) >= 4 else "XXXX-XXXX-0000"
-
-        # STAGE 1: Aadhaar Identity & Demographics AI Fuzzy Match
-        # Simulated UIDAI / DigiLocker master identity store
-        uidai_registry = {
-            "554433221100": {"name": "Priya Sharma", "dob": "2004-06-15", "gender": "Female", "status": "VERIFIED"},
-            "887766554433": {"name": "Rohan Menta", "dob": "2003-11-20", "gender": "Male", "status": "VERIFIED"},
-            "999900001111": {"name": "Vikramaditya Rao", "dob": "2002-04-10", "gender": "Male", "status": "ACTIVE_STUDENT", "existing_college": "Apex Institute of Tech"},
-            "332211445566": {"name": "Sneha Reddy", "dob": "2004-01-25", "gender": "Female", "status": "VERIFIED"}
-        }
-
-        matched_uidai = uidai_registry.get(clean_aadhaar)
-        if matched_uidai:
-            official_name = matched_uidai["name"]
-            official_dob = matched_uidai["dob"]
-        else:
-            # Dynamic identity for any other custom input
-            official_name = full_name
-            official_dob = dob
-
-        name_similarity = self.calculate_name_similarity(full_name, official_name)
-        dob_match = 100.0 if (dob == official_dob or not official_dob) else 40.0
-        demographic_score = round(0.75 * name_similarity + 0.25 * dob_match, 1)
-
-        flags = []
-        suggested_corrections = {}
-
-        if name_similarity < 90.0:
-            flags.append(f"Demographic Discrepancy: Input name '{full_name}' differs from Aadhaar master record '{official_name}' ({name_similarity}% match).")
-            suggested_corrections["full_name"] = official_name
-
-        # STAGE 2: Anti-Fraud & Duplicate Identity Detection (Ghost Student Sentinel)
-        duplicate_detected = False
-        duplicate_details = None
-
-        # Check existing registered students in MongoDB / Memory
-        all_students, _ = self.get_students(limit=1000)
-        for s in all_students:
-            s_aadhaar = self.clean_id(s.get("aadhaar_number", "") or s.get("apaar_id", ""))
-            # Check duplicate Aadhaar or special dual enrollment flag
-            if clean_aadhaar == "999900001111" or (clean_aadhaar and s_aadhaar == clean_aadhaar):
-                duplicate_detected = True
-                duplicate_details = f"Active enrollment already exists under APAAR '{s.get('apaar_id')}' at '{s.get('institution')}'."
-                break
-
-        if matched_uidai and matched_uidai.get("existing_college"):
-            if matched_uidai["existing_college"].lower() not in institution.lower():
-                duplicate_detected = True
-                duplicate_details = f"Aadhaar is already registered concurrently at '{matched_uidai['existing_college']}' (Dual Enrollment Violation)."
-
-        if duplicate_detected:
-            anti_fraud_score = 10.0
-            flags.append(f"DUAL ENROLLMENT FRAUD DETECTED: {duplicate_details}")
-        else:
-            anti_fraud_score = 100.0
-
-        # STAGE 3: AICTE Institutional Affiliation & Program Compliance Check
-        institutions = self.get_institutions()
-        matched_inst = None
-        for inst in institutions:
-            if aicte_id and inst.get("aicte_id") == aicte_id:
-                matched_inst = inst
-                break
-            if institution and inst.get("name", "").lower() in institution.lower():
-                matched_inst = inst
-                break
-
-        if matched_inst:
-            inst_compliance_score = 100.0
-            verified_institution_name = matched_inst.get("name", institution)
-            verified_aicte_id = matched_inst.get("aicte_id", aicte_id or "1-GEN")
-        else:
-            inst_compliance_score = 55.0
-            verified_institution_name = institution or "Unverified AICTE Institution"
-            verified_aicte_id = aicte_id or "1-UNVERIFIED"
-            flags.append(f"AICTE Affiliation Warning: Institute code '{aicte_id}' is pending central database re-accreditation.")
-
-        # STAGE 4: Academic Document & Eligibility Verification
-        if document_uploaded and document_name:
-            doc_score = 100.0
-            doc_status = "DOCUMENTS_VERIFIED"
-        else:
-            doc_score = 30.0
-            doc_status = "MISSING_MANDATORY_DOCUMENTS"
-            flags.append("Missing Document: Class XII Marksheet / DigiLocker academic certificate has not been uploaded.")
-
-        # STAGE 5: AI Risk Assessment & Trust Score Calculation
-        if duplicate_detected:
-            anti_fraud_score = 0.0
-            ai_trust_score = round((demographic_score * 0.25) + (anti_fraud_score * 0.50) + (inst_compliance_score * 0.15) + (doc_score * 0.10), 1)
-            verdict_status = "AI_REJECTED_FRAUD"
-            risk_level = "CRITICAL_FRAUD"
-            decision_text = "AICTE Anti-Fraud Sentinel Blocked: Duplicate Aadhaar enrollment detected across multiple colleges."
-            recommendation = "Reject record immediately and report to AICTE Grievance & Disciplinary Board."
-        elif len(flags) > 0:
-            ai_trust_score = round((demographic_score * 0.35) + (anti_fraud_score * 0.25) + (inst_compliance_score * 0.25) + (doc_score * 0.15), 1)
-            if ai_trust_score > 84.0:
-                ai_trust_score = round(ai_trust_score - 12.0, 1) # Penalty for discrepancy
-            verdict_status = "AI_FLAGGED_DISCREPANCY"
-            risk_level = "MEDIUM_ATTENTION"
-            decision_text = "Minor demographic discrepancy or pending document detected by AI validation model."
-            recommendation = "Route to Institution Verifier / Authorized Reviewer with suggested automated corrections."
-        else:
-            ai_trust_score = round((demographic_score * 0.35) + (anti_fraud_score * 0.25) + (inst_compliance_score * 0.25) + (doc_score * 0.15), 1)
-            verdict_status = "AI_VERIFIED_CLEAN"
-            risk_level = "LOW_RISK"
-            decision_text = "Identity, Aadhaar e-KYC, AICTE institution affiliation, and documents cryptographically verified."
-            recommendation = "Approved for instantaneous APAAR ID generation and automated repository enrollment."
-
-        # STAGE 7: APAAR ID & ABC ID Generation
-        # Deterministic or clean 12-digit APAAR ID
-        clean_seed = abs(hash(f"{full_name}:{clean_aadhaar}:{verified_institution_name}")) % 900000000000 + 100000000000
-        apaar_digits = str(clean_seed)
-        generated_apaar_id = f"{apaar_digits[:4]}-{apaar_digits[4:8]}-{apaar_digits[8:12]}"
-        generated_abc_id = f"ABC-{admission_year}-{apaar_digits[-6:]}"
-        qr_token = f"APAAR-AUTH:{apaar_digits}:{verified_aicte_id}:AI-VERIFIED-2026"
-
-        ai_report = {
-            "trust_score": ai_trust_score,
-            "status": verdict_status,
-            "risk_level": risk_level,
-            "decision": decision_text,
-            "recommendation": recommendation,
-            "demographic_match_score": demographic_score,
-            "name_similarity_percent": name_similarity,
-            "anti_fraud_score": anti_fraud_score,
-            "institution_compliance_score": inst_compliance_score,
-            "document_score": doc_score,
-            "official_aadhaar_name": official_name,
-            "masked_aadhaar": masked_aadhaar,
-            "student_consent_verified": True,
-            "consent_timestamp": now,
-            "flags": flags,
-            "suggested_corrections": suggested_corrections,
-            "doc_status": doc_status
-        }
-
-        created_student = None
-        workflow_app = None
-
-        # STAGE 8: Automated Storage & Workflow Pipeline Submission
-        if auto_enroll:
-            # Prepare full student record
-            student_doc = {
-                "apaar_id": generated_apaar_id,
-                "abc_id": generated_abc_id,
-                "full_name": official_name if name_similarity < 90 else full_name,
-                "dob": dob,
-                "gender": gender,
-                "email": email,
-                "phone": phone,
-                "institution": verified_institution_name,
-                "aicte_id": verified_aicte_id,
-                "program": program,
-                "branch": branch,
-                "admission_year": admission_year,
-                "current_semester": int(data.get("current_semester") or 1),
-                "abc_credits_total": 24,
-                "cgpa": cgpa,
-                "status": "Verified" if verdict_status == "AI_VERIFIED_CLEAN" else "Flagged",
-                "kyc_status": "VERIFIED" if verdict_status != "AI_REJECTED_FRAUD" else "REJECTED_FRAUD",
-                "biometric_verified": verdict_status == "AI_VERIFIED_CLEAN",
-                "masked_aadhaar": masked_aadhaar,
-                "student_consent": True,
-                "consent_timestamp": now,
-                "photo_url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=300&q=80",
-                "qr_token": qr_token,
-                "academic_history": [
-                    {"semester": 1, "credits": 24, "sgpa": cgpa, "status": "Passed"}
-                ],
-                "compliance_notes": f"AI-Verified ({ai_trust_score}% Trust Score). {decision_text}",
-                "ai_verification_report": ai_report
-            }
-
-            if verdict_status == "AI_VERIFIED_CLEAN":
-                created_student = self.add_student(student_doc)
-
-            # Insert application into Multi-Level Verification Workflow
-            operator_user = user or {
-                "name": "Ramesh Patel",
-                "role": "COLLEGE_OPERATOR",
-                "institution": verified_institution_name
-            }
-
-            app_status = "INSTITUTION_APPROVED" if verdict_status == "AI_VERIFIED_CLEAN" else ("FLAGGED_REVIEW" if verdict_status == "AI_FLAGGED_DISCREPANCY" else "FRAUD_CONFIRMED_REJECTED")
-
-            workflow_payload = {
-                "apaar_id": generated_apaar_id,
-                "abc_id": generated_abc_id,
-                "full_name": student_doc["full_name"],
-                "dob": dob,
-                "gender": gender,
-                "email": email,
-                "phone": phone,
-                "institution": verified_institution_name,
-                "aicte_id": verified_aicte_id,
-                "program": program,
-                "branch": branch,
-                "admission_year": admission_year,
-                "current_semester": 1,
-                "abc_credits_total": 24,
-                "cgpa": cgpa,
-                "status": app_status,
-                "submission_notes": f"AI-Powered Verification Application. Score: {ai_trust_score}%. {decision_text}",
-                "ai_verification_report": ai_report
-            }
-
-            workflow_app = self.submit_workflow_application(workflow_payload, operator_user)
-
-            # Dispatch smart alerts
-            if verdict_status == "AI_VERIFIED_CLEAN":
-                self.add_notification(
-                    "INSTITUTION_VERIFIER",
-                    verified_institution_name,
-                    "New AI-Verified APAAR Application",
-                    f"{full_name} was validated with {ai_trust_score}% trust score. Ready for final AICTE seal.",
-                    workflow_app.get("workflow_id")
-                )
-            elif verdict_status == "AI_FLAGGED_DISCREPANCY":
-                self.add_notification(
-                    "AUTHORIZED_REVIEWER",
-                    verified_institution_name,
-                    "AI Discrepancy Flagged",
-                    f"{full_name} has minor discrepancies ({', '.join(flags[:2])}). Requires reviewer validation.",
-                    workflow_app.get("workflow_id")
-                )
+        for item in validation["results"]:
+            if item["is_valid"]:
+                created = self.add_student(item["record"])
+                saved_records.append(created)
             else:
-                self.add_notification(
-                    "AICTE_ADMIN",
-                    "All",
-                    "CRITICAL FRAUD SENTINEL ALERT",
-                    f"Blocked dual-enrollment attempt for {full_name} (Aadhaar {masked_aadhaar}).",
-                    workflow_app.get("workflow_id")
-                )
+                flagged_records.append(item)
+
+        # Log audit trail
+        self.log_audit(
+            action="BATCH_ADMISSION_INGESTION",
+            actor_name=actor_name,
+            actor_role=user.get("role", "INSTITUTION_VERIFIER") if user else "INSTITUTION_VERIFIER",
+            institution=inst_name,
+            details=f"Processed {len(records)} post-admission records: {len(saved_records)} admitted to Central Repository, {len(flagged_records)} flagged for validation errors.",
+            status="SUCCESS" if len(flagged_records) == 0 else "PARTIAL_WARNING"
+        )
 
         return {
             "success": True,
-            "verified": verdict_status == "AI_VERIFIED_CLEAN",
-            "apaar_id": generated_apaar_id,
-            "abc_id": generated_abc_id,
-            "qr_token": qr_token,
-            "ai_trust_score": ai_trust_score,
-            "status": verdict_status,
-            "risk_level": risk_level,
-            "report": ai_report,
-            "student_record": created_student,
-            "workflow_record": workflow_app,
-            "message": decision_text
+            "total_submitted": len(records),
+            "saved_count": len(saved_records),
+            "flagged_count": len(flagged_records),
+            "saved_records": saved_records,
+            "flagged_records": flagged_records
         }
 
-    # Verification logs
-    def log_verification(self, apaar_id, student_name, institution, status, details, verifier="QR Scanner"):
-        record = {
-            "id": f"VER-{int(datetime.now().timestamp() * 1000)}",
+    # -------------------------------------------------------------
+    # AUDIT TRAILS & VERIFICATION LOGS (KEY REQUIREMENTS 5 & 8)
+    # -------------------------------------------------------------
+    def log_audit(self, action, actor_name, actor_role, institution, details, status="SUCCESS"):
+        entry = {
+            "id": f"AUD-{int(datetime.now().timestamp() * 1000) % 100000}",
+            "action": action,
+            "actor_name": actor_name,
+            "actor_role": actor_role,
+            "institution": institution,
+            "details": details,
+            "status": status,
+            "timestamp": datetime.now().isoformat()
+        }
+        if self.connected_to_mongo:
+            self.db.audit_logs.insert_one(dict(entry))
+        else:
+            self.memory_audit_logs.insert(0, entry)
+        return entry
+
+    def get_audit_logs(self, limit=30):
+        if self.connected_to_mongo:
+            return list(self.db.audit_logs.find({}, {"_id": 0}).sort("timestamp", -1).limit(limit))
+        return self.memory_audit_logs[:limit]
+
+    def log_verification(self, apaar_id, student_name, institution, status, details, verifier="Authorized Scanner"):
+        entry = {
+            "id": f"VER-{int(datetime.now().timestamp() * 1000) % 100000}",
             "apaar_id": apaar_id,
             "student_name": student_name,
             "institution": institution,
             "status": status,
             "verifier": verifier,
-            "timestamp": datetime.now().isoformat(),
-            "details": details
+            "details": details,
+            "timestamp": datetime.now().isoformat()
         }
         if self.connected_to_mongo:
-            self.db.verifications.insert_one(dict(record))
-            if "_id" in record:
-                del record["_id"]
+            self.db.verifications.insert_one(dict(entry))
         else:
-            self.memory_verifications.insert(0, record)
-        return record
+            self.memory_verifications.insert(0, entry)
 
-    def get_verifications(self, limit=20):
+        # Mirror in audit log
+        self.log_audit(
+            action="STAKEHOLDER_VERIFICATION",
+            actor_name=verifier,
+            actor_role="AUTHORIZED_VERIFIER",
+            institution=institution,
+            details=f"Verification query for APAAR ID {apaar_id} ({student_name}). Status: {status}",
+            status="SUCCESS" if "SUCCESS" in status else "ALERT"
+        )
+        return entry
+
+    def get_verifications(self, limit=30):
         if self.connected_to_mongo:
-            cursor = self.db.verifications.find({}, {"_id": 0}).sort("timestamp", -1).limit(limit)
-            return list(cursor)
-        else:
-            return self.memory_verifications[:limit]
+            return list(self.db.verifications.find({}, {"_id": 0}).sort("timestamp", -1).limit(limit))
+        return self.memory_verifications[:limit]
 
-    def get_institutions(self):
-        if self.connected_to_mongo:
-            return list(self.db.institutions.find({}, {"_id": 0}))
-        else:
-            return self.memory_institutions
-
+    # -------------------------------------------------------------
+    # ADMISSION ANALYTICS & MONITORING (KEY REQUIREMENTS 4 & 9)
+    # -------------------------------------------------------------
     def get_analytics(self):
-        students, _ = self.get_students(limit=1000)
-        total = len(students)
-        verified = sum(1 for s in students if s.get("status") == "Verified")
-        flagged = sum(1 for s in students if s.get("status") == "Flagged")
-        graduated = sum(1 for s in students if s.get("status") == "Graduated")
+        students = self.get_all_students_flat()
+        institutions = self.get_institutions()
+
+        total_students = len(students)
+        verified_count = sum(1 for s in students if s.get("status") == "Verified")
+        flagged_count = sum(1 for s in students if s.get("status") == "Flagged")
+
+        # Quota breakdowns
+        supernumerary_count = sum(1 for s in students if s.get("supernumerary_seat") is True)
+        nri_count = sum(1 for s in students if s.get("nri_category") in ["NRI", "NRI-Sponsored"])
+        oci_count = sum(1 for s in students if s.get("oci_status") is True)
+        fn_count = sum(1 for s in students if s.get("foreign_national_status") is True)
+
+        # Capacity & Intake calculations
+        total_approved_intake = sum(i.get("approved_intake", 0) for i in institutions)
+        total_actual_enrolment = sum(i.get("actual_enrolment", 0) for i in institutions)
+        total_supernumerary_quota = sum(i.get("supernumerary_quota", 0) for i in institutions)
+
+        # Excess Admissions Detection
+        excess_intake_institutions = [
+            i for i in institutions 
+            if i.get("actual_enrolment", 0) > i.get("approved_intake", 0) or i.get("intake_status") == "VIOLATION_EXCESS_INTAKE"
+        ]
+
         total_credits = sum(s.get("abc_credits_total", 0) for s in students)
-        
-        branch_counts = {}
+
+        branch_dist = {}
         for s in students:
             b = s.get("branch", "Other")
-            branch_counts[b] = branch_counts.get(b, 0) + 1
-            
+            branch_dist[b] = branch_dist.get(b, 0) + 1
+
         recent_verifications = self.get_verifications(limit=6)
-        workflow_metrics = self.get_workflow_metrics()
-        
+        audit_logs = self.get_audit_logs(limit=8)
+
         return {
-            "total_students": total,
-            "verified_count": verified,
-            "flagged_fraud_count": flagged,
-            "graduated_count": graduated,
+            "total_students": total_students,
+            "verified_count": verified_count,
+            "flagged_fraud_count": flagged_count,
+            "total_approved_intake": total_approved_intake,
+            "total_actual_enrolment": total_actual_enrolment,
+            "intake_utilization_rate": round((total_actual_enrolment / max(1, total_approved_intake)) * 100, 1),
+            "supernumerary_count": supernumerary_count,
+            "supernumerary_quota_total": total_supernumerary_quota,
+            "nri_count": nri_count,
+            "oci_count": oci_count,
+            "fn_count": fn_count,
+            "excess_intake_violations": len(excess_intake_institutions),
+            "excess_institutions": excess_intake_institutions,
+            "compliance_rate": round((verified_count / max(1, total_students)) * 100, 1),
             "total_abc_credits": total_credits,
-            "avg_credits": round(total_credits / max(1, total), 1),
-            "compliance_rate": round((verified / max(1, total)) * 100, 1),
-            "branch_distribution": branch_counts,
+            "branch_distribution": branch_dist,
             "recent_verifications": recent_verifications,
-            "institutions_count": len(self.get_institutions()),
-            "workflow_metrics": workflow_metrics
+            "audit_logs": audit_logs,
+            "institutions_count": len(institutions)
         }
+
+    # -------------------------------------------------------------
+    # REGULATORY & POLICY REPORTS GENERATION (KEY REQUIREMENT 9)
+    # -------------------------------------------------------------
+    def generate_admissions_report(self, report_type="COMPREHENSIVE"):
+        institutions = self.get_institutions()
+        students = self.get_all_students_flat()
+
+        rows = []
+        for inst in institutions:
+            appr = inst.get("approved_intake", 0)
+            enr = inst.get("actual_enrolment", 0)
+            diff = enr - appr
+            status = "COMPLIANT" if diff <= 0 else f"VIOLATION (+{diff} EXCESS SEATS)"
+            rows.append({
+                "aicte_id": inst.get("aicte_id"),
+                "institution_name": inst.get("name"),
+                "state": inst.get("state"),
+                "category": inst.get("category"),
+                "approved_intake": appr,
+                "actual_enrolment": enr,
+                "vacancy_or_excess": diff,
+                "supernumerary_enrolled": inst.get("actual_supernumerary", 0),
+                "supernumerary_quota": inst.get("supernumerary_quota", 0),
+                "nri_enrolled": inst.get("actual_nri", 0),
+                "fn_enrolled": inst.get("actual_fn", 0),
+                "compliance_status": status,
+                "compliance_score": inst.get("compliance_score", 95.0)
+            })
+
+        return {
+            "report_id": f"REP-AICTE-{datetime.now().strftime('%Y%m%d')}",
+            "generated_at": datetime.now().isoformat(),
+            "report_type": report_type,
+            "total_institutions_audited": len(institutions),
+            "total_students_enrolled": len(students),
+            "data": rows
+        }
+
 
 db_manager = DatabaseManager()

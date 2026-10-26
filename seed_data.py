@@ -1,11 +1,256 @@
 """
-Seed data for AICTE APAAR ID Student Management and Verification Platform
-Contains realistic student data, ABC credit records, and verification states.
+Seed data for AICTE APAAR ID Student Management, Validation & Verification Platform
+Contains realistic student data with Approved Intake, Supernumerary Seats, NRI, OCI, FN fields,
+and institution-level intake quotas for automated anomaly detection.
 """
+
+INSTITUTIONS = [
+    {
+        "aicte_id": "1-33271891",
+        "name": "Delhi Technological University",
+        "short_name": "DTU Delhi",
+        "state": "Delhi",
+        "category": "AICTE Approved - State University / Tier 1",
+        "approved_intake": 720,
+        "actual_enrolment": 715,
+        "supernumerary_quota": 72,
+        "actual_supernumerary": 68,
+        "nri_quota": 36,
+        "actual_nri": 24,
+        "fn_quota": 36,
+        "actual_fn": 18,
+        "intake_status": "COMPLIANT",
+        "compliance_score": 98.4,
+        "api_key": "aicte_sec_dtu_2026_98a7b",
+        "programs": [
+            {
+                "program": "B.Tech Computer Science & Engineering",
+                "branch": "CSE",
+                "approved_intake": 120,
+                "actual_enrolment": 118,
+                "supernumerary_approved": 12,
+                "supernumerary_enrolled": 11,
+                "nri_approved": 6,
+                "nri_enrolled": 4,
+                "fn_approved": 6,
+                "fn_enrolled": 2
+            },
+            {
+                "program": "B.Tech Artificial Intelligence & Data Science",
+                "branch": "AI & DS",
+                "approved_intake": 60,
+                "actual_enrolment": 60,
+                "supernumerary_approved": 6,
+                "supernumerary_enrolled": 6,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 3,
+                "fn_enrolled": 1
+            },
+            {
+                "program": "B.Tech Electronics & Telecommunication",
+                "branch": "ENTC",
+                "approved_intake": 120,
+                "actual_enrolment": 115,
+                "supernumerary_approved": 12,
+                "supernumerary_enrolled": 10,
+                "nri_approved": 6,
+                "nri_enrolled": 3,
+                "fn_approved": 6,
+                "fn_enrolled": 2
+            },
+            {
+                "program": "B.Tech Mechanical Engineering",
+                "branch": "ME",
+                "approved_intake": 120,
+                "actual_enrolment": 114,
+                "supernumerary_approved": 12,
+                "supernumerary_enrolled": 10,
+                "nri_approved": 6,
+                "nri_enrolled": 3,
+                "fn_approved": 6,
+                "fn_enrolled": 2
+            }
+        ]
+    },
+    {
+        "aicte_id": "1-44910283",
+        "name": "Veermata Jijabai Technological Institute (VJTI)",
+        "short_name": "VJTI Mumbai",
+        "state": "Maharashtra",
+        "category": "AICTE Approved - Autonomous",
+        "approved_intake": 540,
+        "actual_enrolment": 538,
+        "supernumerary_quota": 54,
+        "actual_supernumerary": 51,
+        "nri_quota": 27,
+        "actual_nri": 19,
+        "fn_quota": 27,
+        "actual_fn": 12,
+        "intake_status": "COMPLIANT",
+        "compliance_score": 99.1,
+        "api_key": "aicte_sec_vjti_2026_44b1c",
+        "programs": [
+            {
+                "program": "B.Tech Computer Science & Engineering",
+                "branch": "CSE",
+                "approved_intake": 90,
+                "actual_enrolment": 90,
+                "supernumerary_approved": 9,
+                "supernumerary_enrolled": 9,
+                "nri_approved": 4,
+                "nri_enrolled": 3,
+                "fn_approved": 4,
+                "fn_enrolled": 2
+            },
+            {
+                "program": "B.Tech Artificial Intelligence & Data Science",
+                "branch": "AI & DS",
+                "approved_intake": 60,
+                "actual_enrolment": 59,
+                "supernumerary_approved": 6,
+                "supernumerary_enrolled": 6,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 3,
+                "fn_enrolled": 1
+            }
+        ]
+    },
+    {
+        "aicte_id": "1-12093847",
+        "name": "College of Engineering Pune (COEP)",
+        "short_name": "COEP Pune",
+        "state": "Maharashtra",
+        "category": "AICTE Approved - Technological University",
+        "approved_intake": 600,
+        "actual_enrolment": 595,
+        "supernumerary_quota": 60,
+        "actual_supernumerary": 57,
+        "nri_quota": 30,
+        "actual_nri": 21,
+        "fn_quota": 30,
+        "actual_fn": 15,
+        "intake_status": "COMPLIANT",
+        "compliance_score": 97.8,
+        "api_key": "aicte_sec_coep_2026_12e9f",
+        "programs": [
+            {
+                "program": "B.Tech Electronics & Telecommunication",
+                "branch": "ENTC",
+                "approved_intake": 120,
+                "actual_enrolment": 119,
+                "supernumerary_approved": 12,
+                "supernumerary_enrolled": 11,
+                "nri_approved": 6,
+                "nri_enrolled": 4,
+                "fn_approved": 6,
+                "fn_enrolled": 3
+            }
+        ]
+    },
+    {
+        "aicte_id": "1-99887766",
+        "name": "Apex Institute of Advanced Technology",
+        "short_name": "Apex Inst",
+        "state": "Uttar Pradesh",
+        "category": "AICTE Approved - Private Institution",
+        "approved_intake": 240,
+        "actual_enrolment": 254,
+        "supernumerary_quota": 24,
+        "actual_supernumerary": 29,
+        "nri_quota": 12,
+        "actual_nri": 14,
+        "fn_quota": 12,
+        "actual_fn": 2,
+        "intake_status": "VIOLATION_EXCESS_INTAKE",
+        "compliance_score": 62.4,
+        "api_key": "aicte_sec_apex_2026_99x88",
+        "programs": [
+            {
+                "program": "B.Tech Computer Science & Engineering",
+                "branch": "CSE",
+                "approved_intake": 60,
+                "actual_enrolment": 68,
+                "supernumerary_approved": 6,
+                "supernumerary_enrolled": 9,
+                "nri_approved": 3,
+                "nri_enrolled": 4,
+                "fn_approved": 3,
+                "fn_enrolled": 0
+            }
+        ]
+    },
+    {
+        "aicte_id": "1-55029182",
+        "name": "Jadavpur University Faculty of Engg",
+        "short_name": "Jadavpur Univ",
+        "state": "West Bengal",
+        "category": "AICTE Approved - Tier 1",
+        "approved_intake": 480,
+        "actual_enrolment": 472,
+        "supernumerary_quota": 48,
+        "actual_supernumerary": 42,
+        "nri_quota": 24,
+        "actual_nri": 15,
+        "fn_quota": 24,
+        "actual_fn": 10,
+        "intake_status": "COMPLIANT",
+        "compliance_score": 96.5,
+        "api_key": "aicte_sec_ju_2026_55k29",
+        "programs": [
+            {
+                "program": "B.Tech Electrical Engineering",
+                "branch": "EE",
+                "approved_intake": 120,
+                "actual_enrolment": 118,
+                "supernumerary_approved": 12,
+                "supernumerary_enrolled": 10,
+                "nri_approved": 6,
+                "nri_enrolled": 4,
+                "fn_approved": 6,
+                "fn_enrolled": 3
+            }
+        ]
+    },
+    {
+        "aicte_id": "1-77221199",
+        "name": "Xavier Institute of Management & PGDM Studies",
+        "short_name": "XIM PGDM",
+        "state": "Jharkhand",
+        "category": "PGDM Approved Institution",
+        "approved_intake": 180,
+        "actual_enrolment": 180,
+        "supernumerary_quota": 18,
+        "actual_supernumerary": 15,
+        "nri_quota": 18,
+        "actual_nri": 12,
+        "fn_quota": 18,
+        "actual_fn": 6,
+        "intake_status": "COMPLIANT",
+        "compliance_score": 98.2,
+        "api_key": "aicte_sec_xim_2026_77p22",
+        "programs": [
+            {
+                "program": "Post Graduate Diploma in Management (PGDM)",
+                "branch": "PGDM",
+                "approved_intake": 180,
+                "actual_enrolment": 180,
+                "supernumerary_approved": 18,
+                "supernumerary_enrolled": 15,
+                "nri_approved": 18,
+                "nri_enrolled": 12,
+                "fn_approved": 18,
+                "fn_enrolled": 6
+            }
+        ]
+    }
+]
 
 INITIAL_STUDENTS = [
     {
         "apaar_id": "9283-4710-8521",
+        "student_id": "DTU/2022/CSE/001",
         "abc_id": "ABC-2023-718290",
         "full_name": "Aarav Sharma",
         "dob": "2003-08-14",
@@ -18,6 +263,19 @@ INITIAL_STUDENTS = [
         "branch": "CSE",
         "admission_year": 2022,
         "current_semester": 6,
+        "approved_intake": 120,
+        "actual_enrolment": 118,
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "oci_number": None,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "General",
+        "admission_date": "2022-08-10",
+        "student_consent": True,
+        "consent_timestamp": "2022-08-10T10:15:00Z",
         "abc_credits_total": 126,
         "cgpa": 8.94,
         "kyc_status": "VERIFIED",
@@ -36,26 +294,49 @@ INITIAL_STUDENTS = [
             {"semester": 5, "credits": 24, "sgpa": 9.00, "status": "Passed"},
             {"semester": 6, "credits": 10, "sgpa": 0.00, "status": "In Progress"}
         ],
+        "degree_certificate": {
+            "certificate_id": "DEG-DTU-2026-0042",
+            "degree_name": "Bachelor of Technology (Computer Science & Engineering)",
+            "degree_body": "Delhi Technological University & AICTE",
+            "class_awarded": "First Class with Distinction",
+            "issue_date": "2026-06-30",
+            "chancellor_sign": True,
+            "registrar_sign": True
+        },
         "swayam_nptel_credits": [
             {"course": "Deep Learning by IIT Madras", "credits": 4, "certificate_id": "NPTEL23CS81"},
             {"course": "Cloud Computing by IIT Kharagpur", "credits": 3, "certificate_id": "NPTEL23CS99"}
         ],
-        "compliance_notes": "All prerequisites, AICTE curriculum standards, and biometric attendance (87%) compliant."
+        "compliance_notes": "Enrolled under AICTE Sanctioned Regular Intake. Digilocker verified."
     },
     {
         "apaar_id": "8412-9034-1187",
+        "student_id": "VJTI/2023/AIDS/015",
         "abc_id": "ABC-2023-994812",
         "full_name": "Priya Patel",
         "dob": "2004-03-22",
         "gender": "Female",
         "email": "priya.patel@vjti.ac.in",
         "phone": "+91 97234 11209",
-        "institution": "Veermata Jijabai Technological Institute (VJTI Mumbai)",
+        "institution": "Veermata Jijabai Technological Institute (VJTI)",
         "aicte_id": "1-44910283",
         "program": "B.Tech Artificial Intelligence & Data Science",
         "branch": "AI & DS",
         "admission_year": 2023,
         "current_semester": 4,
+        "approved_intake": 60,
+        "actual_enrolment": 59,
+        "supernumerary_seat": True,
+        "supernumerary_type": "TFW",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "oci_number": None,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "Supernumerary - Tuition Fee Waiver (TFW)",
+        "admission_date": "2023-08-14",
+        "student_consent": True,
+        "consent_timestamp": "2023-08-14T11:20:00Z",
         "abc_credits_total": 84,
         "cgpa": 9.35,
         "kyc_status": "VERIFIED",
@@ -72,132 +353,209 @@ INITIAL_STUDENTS = [
             {"semester": 3, "credits": 24, "sgpa": 9.45, "status": "Passed"},
             {"semester": 4, "credits": 16, "sgpa": 0.00, "status": "In Progress"}
         ],
+        "degree_certificate": {
+            "certificate_id": "DEG-VJTI-2027-0118",
+            "degree_name": "Bachelor of Technology (Artificial Intelligence & Data Science)",
+            "degree_body": "VJTI Mumbai & University of Mumbai",
+            "class_awarded": "First Class with Distinction",
+            "issue_date": "2027-06-30",
+            "chancellor_sign": True,
+            "registrar_sign": True
+        },
         "swayam_nptel_credits": [
             {"course": "Data Mining by IIT Roorkee", "credits": 4, "certificate_id": "NPTEL24CS12"}
         ],
-        "compliance_notes": "DigiLocker verified. ABC credits synced from National Academic Depository."
+        "compliance_notes": "Admitted under 5% AICTE Supernumerary TFW Quota with certified parental income < 8 LPA."
     },
     {
-        "apaar_id": "7103-6629-4501",
-        "abc_id": "ABC-2022-331092",
-        "full_name": "Rahul Verma",
-        "dob": "2002-11-05",
+        "apaar_id": "9123-5544-7788",
+        "student_id": "DTU/2024/CSE/102",
+        "abc_id": "ABC-2024-554411",
+        "full_name": "Rohan Saxena",
+        "dob": "2004-05-18",
         "gender": "Male",
-        "email": "rahul.verma@coep.ac.in",
-        "phone": "+91 98201 99283",
-        "institution": "College of Engineering Pune (COEP)",
-        "aicte_id": "1-12093847",
-        "program": "B.Tech Electronics & Telecommunication",
-        "branch": "ENTC",
-        "admission_year": 2022,
-        "current_semester": 6,
-        "abc_credits_total": 118,
-        "cgpa": 8.42,
+        "email": "rohan.saxena@dtu.ac.in",
+        "phone": "+91 98101 22334",
+        "institution": "Delhi Technological University",
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Computer Science & Engineering",
+        "branch": "CSE",
+        "admission_year": 2024,
+        "current_semester": 2,
+        "approved_intake": 120,
+        "actual_enrolment": 118,
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "NRI-Sponsored",
+        "oci_status": False,
+        "oci_number": None,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "NRI Category",
+        "admission_date": "2024-08-05",
+        "student_consent": True,
+        "consent_timestamp": "2024-08-05T09:40:00Z",
+        "abc_credits_total": 24,
+        "cgpa": 8.70,
         "kyc_status": "VERIFIED",
         "status": "Verified",
         "biometric_verified": True,
         "blood_group": "A+",
-        "guardian_name": "Sunil Verma",
-        "address": "Shivajinagar, Pune, Maharashtra 411005",
+        "guardian_name": "Vikram Saxena (Dubai, UAE)",
+        "address": "NRI Ward, DTU Campus, New Delhi 110042",
         "photo_url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=300&q=80",
-        "qr_token": "APAAR-AUTH:710366294501:AICTE-1-12093847:SEC430C",
+        "qr_token": "APAAR-AUTH:912355447788:AICTE-1-33271891:SEC9123",
         "academic_history": [
-            {"semester": 1, "credits": 20, "sgpa": 8.20, "status": "Passed"},
-            {"semester": 2, "credits": 22, "sgpa": 8.50, "status": "Passed"},
-            {"semester": 3, "credits": 24, "sgpa": 8.40, "status": "Passed"},
-            {"semester": 4, "credits": 24, "sgpa": 8.60, "status": "Passed"},
-            {"semester": 5, "credits": 24, "sgpa": 8.40, "status": "Passed"}
+            {"semester": 1, "credits": 24, "sgpa": 8.70, "status": "Passed"}
         ],
-        "swayam_nptel_credits": [
-            {"course": "Embedded Systems by IIT Bombay", "credits": 4, "certificate_id": "NPTEL22EE04"}
-        ],
-        "compliance_notes": "AICTE approved curriculum, attendance regular."
+        "degree_certificate": {
+            "certificate_id": "DEG-DTU-2028-0912",
+            "degree_name": "Bachelor of Technology (Computer Science & Engineering)",
+            "degree_body": "Delhi Technological University & AICTE",
+            "class_awarded": "First Class with Distinction",
+            "issue_date": "2028-06-30",
+            "chancellor_sign": True,
+            "registrar_sign": True
+        },
+        "swayam_nptel_credits": [],
+        "compliance_notes": "Admitted under 5% AICTE NRI Quota. NRI sponsorship affidavit and MEA attestation verified."
     },
     {
-        "apaar_id": "6029-1144-8832",
-        "abc_id": "ABC-2023-102948",
-        "full_name": "Ananya Mukherjee",
-        "dob": "2004-01-19",
+        "apaar_id": "6671-2299-4411",
+        "student_id": "COEP/2023/ECE/089",
+        "abc_id": "ABC-2023-667122",
+        "full_name": "Aiman Rahman",
+        "dob": "2003-10-10",
         "gender": "Female",
-        "email": "ananya.m@jadavpur.edu.in",
-        "phone": "+91 94330 88291",
-        "institution": "Jadavpur University Faculty of Engg",
-        "aicte_id": "1-55029182",
-        "program": "B.Tech Electrical Engineering",
-        "branch": "EE",
+        "email": "aiman.rahman@coep.ac.in",
+        "phone": "+91 98205 66712",
+        "institution": "College of Engineering Pune (COEP)",
+        "aicte_id": "1-12093847",
+        "program": "B.Tech Electronics & Telecommunication",
+        "branch": "ENTC",
         "admission_year": 2023,
         "current_semester": 4,
+        "approved_intake": 120,
+        "actual_enrolment": 119,
+        "supernumerary_seat": True,
+        "supernumerary_type": "Foreign National (FN)",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "oci_number": None,
+        "foreign_national_status": True,
+        "passport_country": "Bangladesh",
+        "admission_category": "Foreign National (FN)",
+        "admission_date": "2023-08-20",
+        "student_consent": True,
+        "consent_timestamp": "2023-08-20T14:10:00Z",
         "abc_credits_total": 78,
-        "cgpa": 8.78,
+        "cgpa": 8.65,
         "kyc_status": "VERIFIED",
         "status": "Verified",
         "biometric_verified": True,
         "blood_group": "AB+",
-        "guardian_name": "Debabrata Mukherjee",
-        "address": "Salt Lake, Kolkata, West Bengal 700091",
+        "guardian_name": "Dr. Fazlul Rahman",
+        "address": "Dhaka, Bangladesh / International Hostel, COEP Pune",
         "photo_url": "https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80",
-        "qr_token": "APAAR-AUTH:602911448832:AICTE-1-55029182:SEC119D",
+        "qr_token": "APAAR-AUTH:667122994411:AICTE-1-12093847:SEC6671",
         "academic_history": [
-            {"semester": 1, "credits": 20, "sgpa": 8.70, "status": "Passed"},
-            {"semester": 2, "credits": 22, "sgpa": 8.85, "status": "Passed"},
-            {"semester": 3, "credits": 24, "sgpa": 8.80, "status": "Passed"}
+            {"semester": 1, "credits": 22, "sgpa": 8.50, "status": "Passed"},
+            {"semester": 2, "credits": 22, "sgpa": 8.70, "status": "Passed"},
+            {"semester": 3, "credits": 24, "sgpa": 8.75, "status": "Passed"}
         ],
+        "degree_certificate": {
+            "certificate_id": "DEG-COEP-2027-0411",
+            "degree_name": "Bachelor of Technology (Electronics & Telecommunication)",
+            "degree_body": "College of Engineering Pune (COEP)",
+            "class_awarded": "First Class with Distinction",
+            "issue_date": "2027-06-30",
+            "chancellor_sign": True,
+            "registrar_sign": True
+        },
         "swayam_nptel_credits": [],
-        "compliance_notes": "Clean audit report. Verified via State DigiLocker node."
+        "compliance_notes": "ICCR / Foreign National 15% supernumerary quota seat. Valid student visa & FRO clearance verified."
     },
     {
-        "apaar_id": "5512-3390-7764",
-        "abc_id": "ABC-2021-449182",
-        "full_name": "Karthik Raja",
-        "dob": "2001-09-30",
+        "apaar_id": "4455-6677-8899",
+        "student_id": "DTU/2024/CY/034",
+        "abc_id": "ABC-2024-445566",
+        "full_name": "David Miller",
+        "dob": "2004-09-12",
         "gender": "Male",
-        "email": "karthik.raja@psgtech.ac.in",
-        "phone": "+91 94432 77192",
-        "institution": "PSG College of Technology, Coimbatore",
-        "aicte_id": "1-66720194",
-        "program": "B.Tech Mechanical Engineering",
-        "branch": "ME",
-        "admission_year": 2021,
-        "current_semester": 8,
-        "abc_credits_total": 164,
-        "cgpa": 8.15,
+        "email": "david.miller@dtu.ac.in",
+        "phone": "+91 98114 45566",
+        "institution": "Delhi Technological University",
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Computer Science & Engineering",
+        "branch": "CSE",
+        "admission_year": 2024,
+        "current_semester": 2,
+        "approved_intake": 120,
+        "actual_enrolment": 118,
+        "supernumerary_seat": True,
+        "supernumerary_type": "OCI / PIO Supernumerary",
+        "nri_category": "Not Applicable",
+        "oci_status": True,
+        "oci_number": "OCI-IN-8892147",
+        "foreign_national_status": False,
+        "passport_country": "USA",
+        "admission_category": "OCI Status",
+        "admission_date": "2024-08-12",
+        "student_consent": True,
+        "consent_timestamp": "2024-08-12T10:00:00Z",
+        "abc_credits_total": 24,
+        "cgpa": 9.15,
         "kyc_status": "VERIFIED",
-        "status": "Graduated",
+        "status": "Verified",
         "biometric_verified": True,
-        "blood_group": "B-",
-        "guardian_name": "Raja Shanmugam",
-        "address": "Peelamedu, Coimbatore, Tamil Nadu 641004",
+        "blood_group": "O-",
+        "guardian_name": "Robert Miller",
+        "address": "San Jose, CA, USA / DTU Campus",
         "photo_url": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=300&q=80",
-        "qr_token": "APAAR-AUTH:551233907764:AICTE-1-66720194:SEC820E",
+        "qr_token": "APAAR-AUTH:445566778899:AICTE-1-33271891:SEC4455",
         "academic_history": [
-            {"semester": 1, "credits": 20, "sgpa": 8.00, "status": "Passed"},
-            {"semester": 2, "credits": 20, "sgpa": 8.10, "status": "Passed"},
-            {"semester": 3, "credits": 22, "sgpa": 8.20, "status": "Passed"},
-            {"semester": 4, "credits": 22, "sgpa": 8.15, "status": "Passed"},
-            {"semester": 5, "credits": 24, "sgpa": 8.30, "status": "Passed"},
-            {"semester": 6, "credits": 24, "sgpa": 8.10, "status": "Passed"},
-            {"semester": 7, "credits": 22, "sgpa": 8.25, "status": "Passed"},
-            {"semester": 8, "credits": 10, "sgpa": 8.10, "status": "Passed"}
+            {"semester": 1, "credits": 24, "sgpa": 9.15, "status": "Passed"}
         ],
-        "swayam_nptel_credits": [
-            {"course": "Robotics & Automation by IIT Delhi", "credits": 4, "certificate_id": "NPTEL21ME33"}
-        ],
-        "compliance_notes": "Degree conferred. Final transcript uploaded to National Academic Depository."
+        "degree_certificate": {
+            "certificate_id": "DEG-DTU-2028-0455",
+            "degree_name": "Bachelor of Technology (Computer Science & Engineering)",
+            "degree_body": "Delhi Technological University & AICTE",
+            "class_awarded": "First Class with Distinction",
+            "issue_date": "2028-06-30",
+            "chancellor_sign": True,
+            "registrar_sign": True
+        },
+        "swayam_nptel_credits": [],
+        "compliance_notes": "Admitted under OCI / PIO category in accordance with AICTE approval process handbook."
     },
     {
         "apaar_id": "9999-0000-1111",
+        "student_id": "APEX/2023/CSE/071",
         "abc_id": "ABC-FLAG-990011",
         "full_name": "Vikramaditya Rao",
         "dob": "2003-05-12",
         "gender": "Male",
         "email": "v.rao.flagged@fraud-alert.gov.in",
         "phone": "+91 91100 00000",
-        "institution": "Apex Institute of Advanced Tech [Disputed]",
+        "institution": "Apex Institute of Advanced Technology",
         "aicte_id": "1-99887766",
         "program": "B.Tech Computer Science & Engineering",
         "branch": "CSE",
         "admission_year": 2023,
         "current_semester": 3,
+        "approved_intake": 60,
+        "actual_enrolment": 68,
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "oci_number": None,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "General",
+        "admission_date": "2023-09-01",
+        "student_consent": True,
+        "consent_timestamp": "2023-09-01T12:00:00Z",
         "abc_credits_total": 42,
         "cgpa": 6.10,
         "kyc_status": "FLAGGED",
@@ -211,25 +569,40 @@ INITIAL_STUDENTS = [
         "academic_history": [
             {"semester": 1, "credits": 20, "sgpa": 6.20, "status": "Passed"}
         ],
+        "degree_certificate": None,
         "swayam_nptel_credits": [],
-        "compliance_notes": "CRITICAL ALERT: Student APAAR ID found actively enrolled concurrently in 2 separate institutes (Institute ID 1-99887766 and 1-33291044). Academic fraud investigation pending."
+        "compliance_notes": "CRITICAL ANOMALY: Dual enrollment detected concurrently across DTU and Apex Institute. Apex Institute has also exceeded approved intake (68 enrolled vs 60 approved)."
     },
     {
         "apaar_id": "3192-8840-5261",
-        "abc_id": "ABC-2024-118839",
+        "student_id": "DTU/2023/AI/022",
+        "abc_id": "ABC-2023-319288",
         "full_name": "Sneha R. Kulkarni",
-        "dob": "2005-06-18",
+        "dob": "2004-06-18",
         "gender": "Female",
-        "email": "sneha.kulkarni@mitpune.edu.in",
+        "email": "sneha.kulkarni@dtu.ac.in",
         "phone": "+91 97654 32190",
-        "institution": "Maharashtra Institute of Technology (MIT-WPU)",
-        "aicte_id": "1-77881920",
-        "program": "B.Tech Cyber Security",
-        "branch": "Cyber Security",
-        "admission_year": 2024,
-        "current_semester": 2,
-        "abc_credits_total": 24,
-        "cgpa": 9.10,
+        "institution": "Delhi Technological University",
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Artificial Intelligence & Data Science",
+        "branch": "AI & DS",
+        "admission_year": 2023,
+        "current_semester": 4,
+        "approved_intake": 60,
+        "actual_enrolment": 60,
+        "supernumerary_seat": True,
+        "supernumerary_type": "EWS Supernumerary",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "oci_number": None,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "Supernumerary - Economically Weaker Section (EWS)",
+        "admission_date": "2023-08-16",
+        "student_consent": True,
+        "consent_timestamp": "2023-08-16T11:00:00Z",
+        "abc_credits_total": 82,
+        "cgpa": 9.20,
         "kyc_status": "VERIFIED",
         "status": "Verified",
         "biometric_verified": True,
@@ -237,436 +610,259 @@ INITIAL_STUDENTS = [
         "guardian_name": "Ramesh Kulkarni",
         "address": "Kothrud, Pune, Maharashtra 411038",
         "photo_url": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80",
-        "qr_token": "APAAR-AUTH:319288405261:AICTE-1-77881920:SEC310F",
+        "qr_token": "APAAR-AUTH:319288405261:AICTE-1-33271891:SEC310F",
         "academic_history": [
-            {"semester": 1, "credits": 24, "sgpa": 9.10, "status": "Passed"}
+            {"semester": 1, "credits": 22, "sgpa": 9.10, "status": "Passed"},
+            {"semester": 2, "credits": 22, "sgpa": 9.30, "status": "Passed"},
+            {"semester": 3, "credits": 24, "sgpa": 9.20, "status": "Passed"}
         ],
+        "degree_certificate": {
+            "certificate_id": "DEG-DTU-2027-0261",
+            "degree_name": "Bachelor of Technology (Artificial Intelligence & Data Science)",
+            "degree_body": "Delhi Technological University & AICTE",
+            "class_awarded": "First Class with Distinction",
+            "issue_date": "2027-06-30",
+            "chancellor_sign": True,
+            "registrar_sign": True
+        },
         "swayam_nptel_credits": [],
-        "compliance_notes": "First year verified via AICTE centralized counseling."
+        "compliance_notes": "Admitted under AICTE 10% EWS Supernumerary quota. Tahsildar income certificate authenticated."
     }
 ]
 
-INSTITUTIONS = [
+# Sample realistic batch for 1-Click Institutional Upload Demonstration (SIH Evaluators)
+SAMPLE_ADMISSION_BATCH = [
     {
-        "aicte_id": "1-33271891",
-        "name": "Delhi Technological University",
-        "state": "Delhi",
-        "status": "AICTE Approved - Tier 1",
-        "total_enrolled": 4820,
-        "compliance_score": 98.4
-    },
-    {
-        "aicte_id": "1-44910283",
-        "name": "Veermata Jijabai Technological Institute (VJTI)",
-        "state": "Maharashtra",
-        "status": "AICTE Approved - Tier 1",
-        "total_enrolled": 3950,
-        "compliance_score": 99.1
-    },
-    {
-        "aicte_id": "1-12093847",
-        "name": "College of Engineering Pune (COEP)",
-        "state": "Maharashtra",
-        "status": "AICTE Approved - Tier 1",
-        "total_enrolled": 4100,
-        "compliance_score": 97.8
-    },
-    {
-        "aicte_id": "1-55029182",
-        "name": "Jadavpur University Faculty of Engg",
-        "state": "West Bengal",
-        "status": "AICTE Approved - Tier 1",
-        "total_enrolled": 3400,
-        "compliance_score": 96.5
-    },
-    {
-        "aicte_id": "1-66720194",
-        "name": "PSG College of Technology",
-        "state": "Tamil Nadu",
-        "status": "AICTE Approved - Autonomous",
-        "total_enrolled": 5200,
-        "compliance_score": 98.9
-    }
-]
-
-
-# Multi-Level Verification Workflow Initial Applications
-WORKFLOW_APPLICATIONS = [
-    {
-        "workflow_id": "WF-2026-101",
-        "apaar_id": "9123-5544-7788",
-        "abc_id": "ABC-2024-554411",
-        "full_name": "Rohan Saxena",
-        "dob": "2004-05-18",
-        "gender": "Male",
-        "email": "rohan.saxena@dtu.ac.in",
-        "phone": "+91 98101 22334",
+        "apaar_id": "5512-8890-1122",
+        "student_id": "DTU/2024/CSE/055",
+        "full_name": "Ananya Mukherjee",
+        "dob": "2005-04-12",
+        "gender": "Female",
+        "email": "ananya.m@dtu.ac.in",
+        "phone": "+91 98110 55128",
         "institution": "Delhi Technological University",
         "aicte_id": "1-33271891",
         "program": "B.Tech Computer Science & Engineering",
         "branch": "CSE",
         "admission_year": 2024,
-        "current_semester": 2,
-        "abc_credits_total": 24,
-        "cgpa": 8.70,
-        "status": "SUBMITTED", # SUBMITTED | INSTITUTION_APPROVED | FLAGGED_REVIEW | REJECTED_WITH_REMARKS | AICTE_FINAL_APPROVED
-        "submitted_by": "Ramesh Patel (College Operator)",
-        "submitted_at": "2026-10-24T10:30:00Z",
-        "assigned_to": "Dr. Pradeep Kumar (Institution Verifier)",
-        "rejection_remarks": None,
-        "flag_notes": None,
-        "audit_history": [
-            {
-                "timestamp": "2026-10-24T10:30:00Z",
-                "actor_name": "Ramesh Patel",
-                "actor_role": "COLLEGE_OPERATOR",
-                "action": "SUBMIT_RECORD",
-                "remarks": "Initial student enrollment submission with 10th/12th marksheets & DigiLocker e-KYC.",
-                "prev_status": "DRAFT",
-                "new_status": "SUBMITTED"
-            }
-        ]
+        "supernumerary_seat": True,
+        "supernumerary_type": "TFW",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "Supernumerary",
+        "admission_date": "2024-08-11",
+        "student_consent": True,
+        "expected_result": "VALID"
     },
     {
-        "workflow_id": "WF-2026-102",
-        "apaar_id": "8901-2233-4455",
-        "abc_id": "ABC-2023-890122",
-        "full_name": "Meera Iyer",
-        "dob": "2003-12-04",
-        "gender": "Female",
-        "email": "meera.iyer@dtu.ac.in",
-        "phone": "+91 98402 11982",
+        "apaar_id": "7721-3300-9944",
+        "student_id": "DTU/2024/CSE/056",
+        "full_name": "Karthik Raja",
+        "dob": "2004-11-25",
+        "gender": "Male",
+        "email": "karthik.raja@dtu.ac.in",
+        "phone": "+91 94432 77192",
         "institution": "Delhi Technological University",
         "aicte_id": "1-33271891",
-        "program": "B.Tech Artificial Intelligence & Data Science",
-        "branch": "AI & DS",
-        "admission_year": 2023,
-        "current_semester": 4,
-        "abc_credits_total": 82,
-        "cgpa": 9.20,
-        "status": "INSTITUTION_APPROVED",
-        "submitted_by": "Ramesh Patel (College Operator)",
-        "submitted_at": "2026-10-23T14:15:00Z",
-        "assigned_to": "AICTE Central Admin Bureau",
-        "rejection_remarks": None,
-        "flag_notes": None,
-        "audit_history": [
-            {
-                "timestamp": "2026-10-23T14:15:00Z",
-                "actor_name": "Ramesh Patel",
-                "actor_role": "COLLEGE_OPERATOR",
-                "action": "SUBMIT_RECORD",
-                "remarks": "Submitted for institution verification.",
-                "prev_status": "DRAFT",
-                "new_status": "SUBMITTED"
-            },
-            {
-                "timestamp": "2026-10-24T09:45:00Z",
-                "actor_name": "Dr. Pradeep Kumar",
-                "actor_role": "INSTITUTION_VERIFIER",
-                "action": "INSTITUTION_APPROVE",
-                "remarks": "Academic credentials, 4 semesters SGPA, and ABC credit ledger verified against DTU ERP.",
-                "prev_status": "SUBMITTED",
-                "new_status": "INSTITUTION_APPROVED"
-            }
-        ]
-    },
-    {
-        "workflow_id": "WF-2026-103",
-        "apaar_id": "9999-4455-6677",
-        "abc_id": "ABC-FLAG-994455",
-        "full_name": "Kunal Singhania",
-        "dob": "2003-07-29",
-        "gender": "Male",
-        "email": "kunal.s@vjti.ac.in",
-        "phone": "+91 97110 33445",
-        "institution": "Veermata Jijabai Technological Institute (VJTI)",
-        "aicte_id": "1-44910283",
-        "program": "B.Tech Mechanical Engineering",
-        "branch": "ME",
-        "admission_year": 2023,
-        "current_semester": 3,
-        "abc_credits_total": 44,
-        "cgpa": 7.40,
-        "status": "FLAGGED_REVIEW",
-        "submitted_by": "Anil Deshpande (Operator, VJTI)",
-        "submitted_at": "2026-10-22T11:00:00Z",
-        "assigned_to": "Smt. Sunita Rao (Authorized Reviewer)",
-        "rejection_remarks": None,
-        "flag_notes": "SUSPICIOUS DUAL SEAT: APAAR ID flagged with matching Aadhaar biometric hash in Pune University affiliate.",
-        "audit_history": [
-            {
-                "timestamp": "2026-10-22T11:00:00Z",
-                "actor_name": "Anil Deshpande",
-                "actor_role": "COLLEGE_OPERATOR",
-                "action": "SUBMIT_RECORD",
-                "remarks": "Submitted student record.",
-                "prev_status": "DRAFT",
-                "new_status": "SUBMITTED"
-            },
-            {
-                "timestamp": "2026-10-23T16:20:00Z",
-                "actor_name": "Prof. S. K. Mahajan",
-                "actor_role": "INSTITUTION_VERIFIER",
-                "action": "FLAG_FOR_REVIEW",
-                "remarks": "Automated cross-check detected concurrent enrollment in another institute. Escalating to AICTE Reviewer.",
-                "prev_status": "SUBMITTED",
-                "new_status": "FLAGGED_REVIEW"
-            }
-        ]
-    },
-    {
-        "workflow_id": "WF-2026-104",
-        "apaar_id": "7712-3344-9900",
-        "abc_id": "ABC-2024-771233",
-        "full_name": "Tanvi Deshmukh",
-        "dob": "2005-02-14",
-        "gender": "Female",
-        "email": "tanvi.d@coep.ac.in",
-        "phone": "+91 98220 99881",
-        "institution": "College of Engineering Pune (COEP)",
-        "aicte_id": "1-12093847",
-        "program": "B.Tech Electronics & Telecommunication",
-        "branch": "ENTC",
+        "program": "B.Tech Computer Science & Engineering",
+        "branch": "CSE",
         "admission_year": 2024,
-        "current_semester": 1,
-        "abc_credits_total": 0,
-        "cgpa": 0.0,
-        "status": "REJECTED_WITH_REMARKS",
-        "submitted_by": "Sachin Kadam (Operator, COEP)",
-        "submitted_at": "2026-10-21T09:10:00Z",
-        "assigned_to": "Sachin Kadam (College Operator)",
-        "rejection_remarks": "DigiLocker 12th Certificate document missing digital signature. ABC ID checksum mismatch (ABC-2024-771233 not found on NAD portal). Please verify and resubmit.",
-        "flag_notes": None,
-        "audit_history": [
-            {
-                "timestamp": "2026-10-21T09:10:00Z",
-                "actor_name": "Sachin Kadam",
-                "actor_role": "COLLEGE_OPERATOR",
-                "action": "SUBMIT_RECORD",
-                "remarks": "Initial upload.",
-                "prev_status": "DRAFT",
-                "new_status": "SUBMITTED"
-            },
-            {
-                "timestamp": "2026-10-22T13:40:00Z",
-                "actor_name": "Dr. V. N. Pande",
-                "actor_role": "INSTITUTION_VERIFIER",
-                "action": "REJECT_WITH_REMARKS",
-                "remarks": "DigiLocker 12th Certificate document missing digital signature. ABC ID checksum mismatch. Returned to operator for correction.",
-                "prev_status": "SUBMITTED",
-                "new_status": "REJECTED_WITH_REMARKS"
-            }
-        ]
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "NRI",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "NRI",
+        "admission_date": "2024-08-11",
+        "student_consent": True,
+        "expected_result": "VALID"
     },
     {
-        "workflow_id": "WF-2026-105",
-        "apaar_id": "9283-4710-8521",
-        "abc_id": "ABC-2023-718290",
-        "full_name": "Aarav Sharma",
+        "apaar_id": "9999-0000-1111", # Duplicate / Concurrent Enrollment Trigger
+        "student_id": "DTU/2024/CSE/099",
+        "full_name": "Vikramaditya Rao",
+        "dob": "2003-05-12",
+        "gender": "Male",
+        "email": "v.rao@dtu.ac.in",
+        "phone": "+91 91100 00000",
+        "institution": "Delhi Technological University",
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Computer Science & Engineering",
+        "branch": "CSE",
+        "admission_year": 2024,
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "General",
+        "admission_date": "2024-08-12",
+        "student_consent": True,
+        "expected_result": "FLAG_CROSS_INSTITUTION_DUPLICATE"
+    },
+    {
+        "apaar_id": "9283-4710-8521", # Duplicate in same institution Trigger
+        "student_id": "DTU/2024/CSE/100",
+        "full_name": "Aarav Sharma (Duplicate Attempt)",
         "dob": "2003-08-14",
         "gender": "Male",
-        "email": "aarav.sharma@dtu.ac.in",
+        "email": "aarav.dup@dtu.ac.in",
         "phone": "+91 98112 45678",
         "institution": "Delhi Technological University",
         "aicte_id": "1-33271891",
         "program": "B.Tech Computer Science & Engineering",
         "branch": "CSE",
-        "admission_year": 2022,
-        "current_semester": 6,
-        "abc_credits_total": 126,
-        "cgpa": 8.94,
-        "status": "AICTE_FINAL_APPROVED",
-        "submitted_by": "Ramesh Patel (College Operator)",
-        "submitted_at": "2026-10-15T10:00:00Z",
-        "assigned_to": "Completed (National Registry Active)",
-        "rejection_remarks": None,
-        "flag_notes": None,
-        "audit_history": [
-            {
-                "timestamp": "2026-10-15T10:00:00Z",
-                "actor_name": "Ramesh Patel",
-                "actor_role": "COLLEGE_OPERATOR",
-                "action": "SUBMIT_RECORD",
-                "remarks": "Cohort upload.",
-                "prev_status": "DRAFT",
-                "new_status": "SUBMITTED"
-            },
-            {
-                "timestamp": "2026-10-16T11:20:00Z",
-                "actor_name": "Dr. Pradeep Kumar",
-                "actor_role": "INSTITUTION_VERIFIER",
-                "action": "INSTITUTION_APPROVE",
-                "remarks": "Institution verification completed.",
-                "prev_status": "SUBMITTED",
-                "new_status": "INSTITUTION_APPROVED"
-            },
-            {
-                "timestamp": "2026-10-18T15:00:00Z",
-                "actor_name": "Prof. T. G. Sitharam",
-                "actor_role": "AICTE_ADMIN",
-                "action": "AICTE_FINAL_APPROVE",
-                "remarks": "AICTE central cryptographic token granted. Student active on APAAR Scanner.",
-                "prev_status": "INSTITUTION_APPROVED",
-                "new_status": "AICTE_FINAL_APPROVED"
-            }
-        ]
-    }
-]
-
-# Notifications for Authority Roles
-INITIAL_NOTIFICATIONS = [
+        "admission_year": 2024,
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "General",
+        "admission_date": "2024-08-12",
+        "student_consent": True,
+        "expected_result": "FLAG_DUPLICATE_APAAR"
+    },
     {
-        "id": "NOTIF-1",
-        "recipient_role": "INSTITUTION_VERIFIER",
+        "apaar_id": "1234-5678-INVALID", # Invalid Format Trigger
+        "student_id": "DTU/2024/CSE/101",
+        "full_name": "Ramesh Kumar Verma",
+        "dob": "2004-01-15",
+        "gender": "Male",
+        "email": "ramesh.k@dtu.ac.in",
+        "phone": "+91 98980 12345",
         "institution": "Delhi Technological University",
-        "title": "New Student Application Pending Verification",
-        "message": "Operator Ramesh Patel submitted Rohan Saxena (APAAR: 9123-5544-7788) for verification.",
-        "timestamp": "2026-10-24T10:30:00Z",
-        "workflow_id": "WF-2026-101",
-        "read": False
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Computer Science & Engineering",
+        "branch": "CSE",
+        "admission_year": 2024,
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "General",
+        "admission_date": "2024-08-12",
+        "student_consent": True,
+        "expected_result": "FLAG_INVALID_APAAR"
     },
     {
-        "id": "NOTIF-2",
-        "recipient_role": "AUTHORIZED_REVIEWER",
-        "institution": "All",
-        "title": "Escalated Fraud / Disputed Case",
-        "message": "Kunal Singhania (WF-2026-103) flagged for suspected dual-enrollment at VJTI Mumbai.",
-        "timestamp": "2026-10-23T16:20:00Z",
-        "workflow_id": "WF-2026-103",
-        "read": False
-    },
-    {
-        "id": "NOTIF-3",
-        "recipient_role": "COLLEGE_OPERATOR",
-        "institution": "College of Engineering Pune (COEP)",
-        "title": "Record Returned with Correction Remarks",
-        "message": "Tanvi Deshmukh (WF-2026-104) returned: Missing digital signature on 12th marksheet.",
-        "timestamp": "2026-10-22T13:40:00Z",
-        "workflow_id": "WF-2026-104",
-        "read": False
-    },
-    {
-        "id": "NOTIF-4",
-        "recipient_role": "AICTE_ADMIN",
-        "institution": "All",
-        "title": "Final Approval Queue",
-        "message": "Meera Iyer (DTU - AI&DS) approved by institution, awaiting AICTE national registry seal.",
-        "timestamp": "2026-10-24T09:45:00Z",
-        "workflow_id": "WF-2026-102",
-        "read": False
+        "apaar_id": "6644-2211-9988",
+        "student_id": "APEX/2024/CSE/069",
+        "full_name": "Sunil Chawla",
+        "dob": "2004-07-20",
+        "gender": "Male",
+        "email": "sunil.c@apex.edu.in",
+        "phone": "+91 97711 22334",
+        "institution": "Apex Institute of Advanced Technology", # Apex is at 68/60 seats -> Excess Intake!
+        "aicte_id": "1-99887766",
+        "program": "B.Tech Computer Science & Engineering",
+        "branch": "CSE",
+        "admission_year": 2024,
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "General",
+        "admission_date": "2024-08-15",
+        "student_consent": True,
+        "expected_result": "FLAG_EXCESS_APPROVED_INTAKE"
     }
 ]
 
-# SIH Demo Friendly "Dirty Dataset" for AI-Powered Data Quality Assistant
-DIRTY_BATCH_DATA = [
-    {
-        "id": "DIRTY-01",
-        "raw_apaar_id": "9283-471-852", # Format error: 11 digits instead of 12
-        "raw_full_name": "  aARAV   sHARMA ", # Formatting & casing issue
-        "raw_institution": "Deli Tech Univ", # Common typo
-        "raw_branch": "Comp Sci Engg", # Non-standard branch name
-        "raw_email": "aarav.sharma@@dtu..ac.in", # Malformed email
-        "raw_phone": "9811245678", # Missing country code
-        "raw_cgpa": 11.2, # Out of bounds (scale of 10.0)
-        "raw_abc_id": "ABC2023718290", # Missing hyphens
-        "department": "Computer Science",
-        "batch": "2022-2026"
-    },
-    {
-        "id": "DIRTY-02",
-        "raw_apaar_id": "8412-9034-1187",
-        "raw_full_name": "Priya Patel",
-        "raw_institution": "VJIT Mumbai", # Typo: VJTI spelled as VJIT
-        "raw_branch": "Artificial Intel", # Non-standard branch
-        "raw_email": "priya.patel@vjti.ac.in",
-        "raw_phone": "+91 97234 11209",
-        "raw_cgpa": 9.35,
-        "raw_abc_id": "", # Missing mandatory field
-        "department": "Artificial Intelligence",
-        "batch": "2023-2027"
-    },
-    {
-        "id": "DIRTY-03",
-        "raw_apaar_id": "7103-6629-XXXX", # Masked / incomplete characters
-        "raw_full_name": "Rahul", # Incomplete name (no surname)
-        "raw_institution": "College of Engineering Pune (COEP)",
-        "raw_branch": "ENTC",
-        "raw_email": "rahul.verma@coep.ac.in",
-        "raw_phone": "+91 98201 99283",
-        "raw_cgpa": -1.5, # Negative CGPA
-        "raw_abc_id": "ABC-2022-331092",
-        "department": "Electronics",
-        "batch": "2022-2026"
-    },
-    {
-        "id": "DIRTY-04",
-        "raw_apaar_id": "6029-1144-8832",
-        "raw_full_name": "Ananya Mukherjee",
-        "raw_institution": "Jadavpur Univ", # Abbreviation
-        "raw_branch": "EE",
-        "raw_email": "ananya.m@jadavpur.edu.in",
-        "raw_phone": "0000000000", # Dummy phone number
-        "raw_cgpa": 8.78,
-        "raw_abc_id": "ABC-2023-102948",
-        "department": "Electrical Engineering",
-        "batch": "2023-2027"
-    },
-    {
-        "id": "DIRTY-05",
-        "raw_apaar_id": "5512-3390-7764",
-        "raw_full_name": "Karthik Raja",
-        "raw_institution": "PSG Tech", # Abbreviation
-        "raw_branch": "Mechanical",
-        "raw_email": "karthik.raja@psgtech.ac.in",
-        "raw_phone": "+91 94432 77192",
-        "raw_cgpa": 8.15,
-        "raw_abc_id": "ABC-2021-449182",
-        "department": "Mechanical Engineering",
-        "batch": "2021-2025"
-    }
-]
-
-# Authority User Accounts for Role-Based Login
+# Stakeholder Users
 AUTHORITY_USERS = [
     {
-        "id": "USR-OP-01",
-        "name": "Ramesh Patel",
-        "email": "operator@dtu.ac.in",
-        "password": "operator123",
-        "role": "COLLEGE_OPERATOR",
-        "role_title": "College Data Operator",
-        "institution": "Delhi Technological University",
-        "permissions": ["SUBMIT_STUDENT", "EDIT_REJECTED", "VIEW_COLLEGE_ROSTER"]
-    },
-    {
-        "id": "USR-VER-02",
-        "name": "Dr. Pradeep Kumar",
-        "email": "verifier@dtu.ac.in",
-        "password": "verifier123",
-        "role": "INSTITUTION_VERIFIER",
-        "role_title": "Institution Verifier & Dean Academics",
-        "institution": "Delhi Technological University",
-        "permissions": ["VERIFY_RECORDS", "APPROVE_INSTITUTION", "FLAG_RECORD", "REJECT_WITH_REMARKS"]
-    },
-    {
-        "id": "USR-REV-03",
-        "name": "Smt. Sunita Rao",
-        "email": "reviewer@aicte.gov.in",
-        "password": "reviewer123",
-        "role": "AUTHORIZED_REVIEWER",
-        "role_title": "Authorized Reviewer (Grievance & Fraud Cell)",
-        "institution": "AICTE National Review Bureau",
-        "permissions": ["RESOLVE_FLAGS", "INVESTIGATE_DUAL_SEATS", "CLEAR_REVIEW", "CONFIRM_FRAUD"]
-    },
-    {
-        "id": "USR-ADM-04",
+        "id": "USR-AICTE-01",
         "name": "Prof. T. G. Sitharam",
         "email": "admin@aicte.gov.in",
         "password": "admin123",
         "role": "AICTE_ADMIN",
-        "role_title": "AICTE Central Administrator & Chairman",
+        "role_title": "AICTE Central Admin & Chairman",
         "institution": "All India Council for Technical Education (HQ)",
-        "permissions": ["ALL_PERMISSIONS", "FINAL_APPROVE", "OVERRIDE", "NATIONAL_AUDIT"]
+        "permissions": ["NATIONAL_MONITORING", "INTAKE_ENFORCEMENT", "POLICY_REPORTS", "REPOSITORY_ADMIN"]
+    },
+    {
+        "id": "USR-INST-02",
+        "name": "Dr. Pradeep Kumar",
+        "email": "registrar@dtu.ac.in",
+        "password": "verifier123",
+        "role": "INSTITUTION_VERIFIER",
+        "role_title": "Dean Academics & Registrar",
+        "institution": "Delhi Technological University",
+        "permissions": ["DATA_UPLOAD", "INTAKE_MANAGEMENT", "APAAR_VALIDATION", "STUDENT_REGISTRATION"]
+    },
+    {
+        "id": "USR-STK-03",
+        "name": "Rajiv Nair",
+        "email": "verifier@tcs.com",
+        "password": "verifier123",
+        "role": "AUTHORIZED_VERIFIER",
+        "role_title": "Authorized Verifier / Employer",
+        "institution": "Tata Consultancy Services (TCS Campus Onboarding)",
+        "permissions": ["INSTANT_VERIFICATION", "ACADEMIC_RECORD_QUERY", "VERIFIABLE_CREDENTIAL_EXPORT"]
+    },
+    {
+        "id": "USR-STU-04",
+        "name": "Aarav Sharma",
+        "email": "student@dtu.ac.in",
+        "password": "student123",
+        "role": "STUDENT",
+        "role_title": "Student (Verified)",
+        "institution": "Delhi Technological University",
+        "apaar_id": "9283-4710-8521",
+        "permissions": ["VIEW_APAAR_PASSPORT", "PRINT_DEGREE_CERTIFICATE"]
+    }
+]
+
+# Audit Trail for Verification and Intake Operations
+INITIAL_AUDIT_LOGS = [
+    {
+        "id": "AUD-1001",
+        "action": "STUDENT_DATA_SUBMITTED",
+        "actor_name": "Dr. Pradeep Kumar",
+        "actor_role": "INSTITUTION_VERIFIER",
+        "institution": "Delhi Technological University",
+        "details": "Submitted 120 student admission records for B.Tech CSE (Academic Year 2024-25). Approved Intake: 120, Actual Enrolment: 118.",
+        "status": "SUCCESS",
+        "timestamp": "2026-10-24T10:15:00Z"
+    },
+    {
+        "id": "AUD-1002",
+        "action": "EXCESS_INTAKE_ANOMALY_TRIGGERED",
+        "actor_name": "AICTE Automated Intake Sentinel",
+        "actor_role": "SYSTEM",
+        "institution": "Apex Institute of Advanced Technology",
+        "details": "Intake anomaly: Institution enrolled 68 students against AICTE Approved Intake of 60 (+8 excess regular admissions) in B.Tech CSE.",
+        "status": "ALERT_TRIGGERED",
+        "timestamp": "2026-10-24T12:30:00Z"
+    },
+    {
+        "id": "AUD-1003",
+        "action": "DUAL_ENROLLMENT_FRAUD_FLAGGED",
+        "actor_name": "AICTE Cross-Institutional Validator",
+        "actor_role": "SYSTEM",
+        "institution": "Apex Institute of Advanced Technology",
+        "details": "Student Vikramaditya Rao (APAAR: 9999-0000-1111) flagged for concurrent full-time admission across two institutions.",
+        "status": "ALERT_FLAGGED",
+        "timestamp": "2026-10-24T14:45:00Z"
+    },
+    {
+        "id": "AUD-1004",
+        "action": "STAKEHOLDER_CREDENTIAL_VERIFICATION",
+        "actor_name": "Rajiv Nair",
+        "actor_role": "AUTHORIZED_VERIFIER",
+        "institution": "Tata Consultancy Services",
+        "details": "Cryptographically verified student credentials for Aarav Sharma (APAAR: 9283-4710-8521). Result: 100% Authentic.",
+        "status": "SUCCESS",
+        "timestamp": "2026-10-25T09:12:00Z"
     }
 ]

@@ -1,14 +1,28 @@
-# AICTE APAAR ID Platform - Backend Service
+# AICTE APAAR ID Platform - Backend API Service
 
-An AI-powered student data management, verification, and multi-level approval platform for AICTE-approved institutions under Smart India Hackathon (SIH26263).
+Integrated student data management, automated intake validation, and tamper-proof verification REST API for AICTE-approved institutions under the Automated Permanent Academic Account Registry (APAAR) initiative (*One Nation, One Student ID*).
 
 ## 🚀 Key Features
 
-- **AI-Based APAAR Verification Engine**: Aadhaar demographic fuzzy matching, mandatory student consent compliance, duplicate/ghost student detection, and AICTE accreditation validation.
-- **Multi-Level Verification State Machine**: 4-tier approval pipeline (College Operator ➔ Institution Verifier ➔ Authorized Reviewer ➔ AICTE Central Admin).
-- **AI Data Quality Assistant**: Pre-submission database hygiene audit, anomaly detection, typo normalization, and 1-click suggested fixes.
-- **Verifiable QR Code Generation**: Generates cryptographically verifiable QR codes for APAAR student cards.
-- **MongoDB Integration**: MongoDB Atlas persistence with high-performance in-memory fallback.
+- **Automated APAAR & Intake Validation Engine (`POST /api/institution/validate`)**:
+  - Duplicate student record detection within and across institutions.
+  - 12-digit numeric APAAR validation & checksum integrity.
+  - **Admissions Exceeding Approved Intake**: Detects institutions admitting students beyond AICTE sanctioned regular intake or violating supernumerary caps (10–15%).
+  - Inconsistency detection: checks mandatory student IDs, consent status, and invalid quota claims.
+- **Institution Post-Admission Data Ingestion (`POST /api/institution/upload-students`)**:
+  - Secure batch ingestion of student records with Approved Intake, Supernumerary (TFW, EWS, Sports), NRI, OCI, and Foreign National (FN) categories.
+- **AICTE Central Repository (`/api/students`)**:
+  - Master student registry with APAAR ID as unique academic identifier.
+  - Comprehensive filtering by institution, branch, category, and compliance status.
+- **Authorized Stakeholder Verification Gateway (`POST /api/verify-apaar`)**:
+  - Cryptographic verification for AICTE, institutions, employers (TCS, Infosys), and regulatory bodies.
+  - Generates tamper-proof **SHA-256 cryptographic proof seals**.
+  - Dynamic QR code generation (`/api/generate-qr/<apaar_id>`).
+- **Real-Time Admission Monitoring & Policy Reports (`/api/analytics`, `/api/reports/admissions`)**:
+  - Real-time intake vs enrolment monitoring and excess intake anomaly sentinel.
+  - CSV report exports for AICTE Council, NAAC, and NIRF accreditation.
+- **Institutional ERP / SIS REST Integration (`/api/v1/...`)**:
+  - Headless API for university ERPs (SAP, PeopleSoft, Custom SIS) with `X-AICTE-API-KEY` authentication.
 
 ---
 
@@ -16,7 +30,7 @@ An AI-powered student data management, verification, and multi-level approval pl
 
 - **Python 3.10+**
 - **Flask** & **Flask-CORS**
-- **PyMongo** (MongoDB Driver)
+- **PyMongo** (MongoDB Driver with automatic in-memory fallback)
 - **QRCode & Pillow** (Dynamic QR Generation)
 - **python-dotenv**
 
@@ -24,7 +38,7 @@ An AI-powered student data management, verification, and multi-level approval pl
 
 ## ⚙️ Setup & Installation
 
-1. **Create and activate a virtual environment** (optional but recommended):
+1. **Activate virtual environment**:
    ```bash
    python -m venv venv
    # On Windows:
@@ -38,30 +52,8 @@ An AI-powered student data management, verification, and multi-level approval pl
    pip install -r requirements.txt
    ```
 
-3. **Configure Environment Variables**:
-   Copy `.env.example` to `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-   Add your `MONGO_URI` in `.env` (or leave it blank to run in local in-memory mode with pre-seeded demo records).
-
-4. **Run the Backend Server**:
+3. **Run the Backend Server**:
    ```bash
    python app.py
    ```
-   The API will be available at `http://127.0.0.1:5000`.
-
----
-
-## 📡 API Endpoints Overview
-
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/api/ai-verify-student` | Multi-factor AI verification for new student APAAR ID |
-| `GET` | `/api/ai-verify-student/presets` | 4 ready-to-test SIH evaluator demo cases |
-| `POST` | `/api/verify-apaar` | APAAR ID & QR token instant verification |
-| `GET` | `/api/workflow/records` | Multi-level approval applications queue |
-| `POST` | `/api/workflow/action` | Authority approval, rejection, or flagging |
-| `POST` | `/api/data-quality/analyze` | AI pre-submission data quality audit |
-| `GET` | `/api/students` | Central student repository query & filters |
-| `GET` | `/api/generate-qr/<id>` | Dynamic verifiable QR code image or base64 |
+   *Runs by default on `http://127.0.0.1:5000`.*
