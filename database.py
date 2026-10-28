@@ -127,7 +127,15 @@ class DatabaseManager:
             if status and status != "All":
                 filter_doc["status"] = status
             if institution and institution != "All":
-                filter_doc["institution"] = institution
+                target_inst = self.get_institution_by_id(institution)
+                inst_name = target_inst.get("name") if target_inst else institution
+                inst_aicte = target_inst.get("aicte_id") if target_inst else institution
+                filter_doc["$or"] = [
+                    {"institution": inst_name},
+                    {"institution": institution},
+                    {"aicte_id": inst_aicte},
+                    {"aicte_id": institution}
+                ]
             if quota and quota != "All":
                 if quota == "Supernumerary":
                     filter_doc["supernumerary_seat"] = True
@@ -176,7 +184,15 @@ class DatabaseManager:
             if status and status != "All":
                 filtered = [s for s in filtered if s.get("status") == status]
             if institution and institution != "All":
-                filtered = [s for s in filtered if s.get("institution") == institution or s.get("aicte_id") == institution]
+                target_inst = self.get_institution_by_id(institution)
+                inst_name = (target_inst.get("name") if target_inst else institution).lower()
+                inst_aicte = (target_inst.get("aicte_id") if target_inst else institution).lower()
+                inst_short = (target_inst.get("short_name") if target_inst else institution).lower()
+                filtered = [
+                    s for s in filtered 
+                    if s.get("institution", "").lower() in [inst_name, institution.lower(), inst_short]
+                    or s.get("aicte_id", "").lower() in [inst_aicte, institution.lower()]
+                ]
             if quota and quota != "All":
                 if quota == "Supernumerary":
                     filtered = [s for s in filtered if s.get("supernumerary_seat") is True]
@@ -345,13 +361,32 @@ class DatabaseManager:
     # -------------------------------------------------------------
     def get_institutions(self):
         if self.connected_to_mongo:
-            return list(self.db.institutions.find({}, {"_id": 0}))
-        return self.memory_institutions
+            insts = list(self.db.institutions.find({}, {"_id": 0}))
+        else:
+            insts = self.memory_institutions
+            
+        students = self.get_all_students_flat()
+        for inst in insts:
+            c = sum(1 for s in students if s.get("institution") == inst.get("name") or s.get("aicte_id") == inst.get("aicte_id"))
+            inst["registered_students"] = c
+            appr = inst.get("approved_intake", 0)
+            enr = inst.get("actual_enrolment", 0)
+            inst["vacant_seats"] = max(0, appr - enr)
+            inst["excess_seats"] = max(0, enr - appr)
+            inst["is_full"] = (enr == appr)
+        return insts
 
     def get_institution_by_id(self, aicte_id):
+        if not aicte_id:
+            return None
+        clean_id = str(aicte_id).strip().lower()
         institutions = self.get_institutions()
         for inst in institutions:
-            if inst.get("aicte_id") == aicte_id or inst.get("name").lower() == str(aicte_id).lower():
+            if (
+                inst.get("aicte_id", "").lower() == clean_id or
+                inst.get("name", "").lower() == clean_id or
+                inst.get("short_name", "").lower() == clean_id
+            ):
                 return inst
         return None
 
@@ -429,12 +464,30 @@ class DatabaseManager:
         # 4. Admissions Exceeding Approved Intake Check
         inst_obj = target_institution
         if not inst_obj and inst_name:
-            inst_obj = next((i for i in self.get_institutions() if i.get("name", "").lower() == inst_name.lower() or i.get("aicte_id") == record.get("aicte_id")), None)
+            inst_obj = self.get_institution_by_id(inst_name) or self.get_institution_by_id(record.get("aicte_id"))
 
         if inst_obj:
-            branch_name = record.get("branch", "")
-            prog_name = record.get("program", "")
-            prog = next((p for p in inst_obj.get("programs", []) if p.get("branch", "").lower() == branch_name.lower() or p.get("program", "").lower() == prog_name.lower()), None)
+            branch_name = (record.get("branch") or "").strip()
+            prog_name = (record.get("program") or "").strip()
+            b_low = branch_name.lower()
+            p_low = prog_name.lower()
+            
+            prog = None
+            for p in inst_obj.get("programs", []):
+                pb = (p.get("branch") or "").strip().lower()
+                pp = (p.get("program") or "").strip().lower()
+                if (
+                    pb == b_low or
+                    pp == p_low or
+                    (b_low and b_low in pp) or
+                    (pb and pb in b_low) or
+                    (b_low and pb in p_low)
+                ):
+                    prog = p
+                    break
+            
+            if not prog and inst_obj.get("programs"):
+                prog = inst_obj.get("programs")[0]
             
             is_tfws = (record.get("supernumerary_type") == "TFWS" or 
                        record.get("admission_category") == "TFWS" or 
@@ -446,91 +499,91 @@ class DatabaseManager:
             is_nri = record.get("nri_category") in ["NRI", "NRI-Sponsored"]
             is_fn = bool(record.get("foreign_national_status") or (record.get("passport_country") and record.get("passport_country") not in ["None", "India", ""]))
 
-            if prog:
-                appr_intake = prog.get("approved_intake", 60)
-                act_enr = prog.get("actual_enrolment", 0)
+            branch_label = prog.get("branch", branch_name) if prog else branch_name
+            appr_intake = max(60, prog.get("approved_intake", 60) if prog else inst_obj.get("approved_intake", 60))
+            act_enr = prog.get("actual_enrolment", 0) if prog else 0
 
-                # Regular seat check (Standard AICTE 60 seats cutoff per division)
-                if not is_supernumerary and not is_nri and not is_fn:
-                    if act_enr >= appr_intake:
-                        errors.append({
-                            "code": "ADMISSION_EXCEEDING_APPROVED_INTAKE",
-                            "field": "approved_intake",
-                            "message": f"REGULAR INTAKE CUTOFF EXCEEDED: Department '{prog.get('branch', branch_name)}' has reached its AICTE Approved Intake cap of {appr_intake} seats ({act_enr}/{appr_intake} seats filled). Admissions beyond approved cutoff are strictly prohibited."
-                        })
-                    elif act_enr >= appr_intake - 2:
-                        warnings.append({
-                            "code": "NEAR_APPROVED_INTAKE_CAP",
-                            "field": "approved_intake",
-                            "message": f"Department '{prog.get('branch', branch_name)}' is approaching approved intake cutoff ({act_enr}/{appr_intake} seats filled)."
-                        })
+            # Regular seat check (Standard AICTE 60 seats cutoff per division)
+            if not is_supernumerary and not is_nri and not is_fn:
+                if act_enr >= appr_intake:
+                    errors.append({
+                        "code": "ADMISSION_EXCEEDING_APPROVED_INTAKE",
+                        "field": "approved_intake",
+                        "message": f"REGULAR INTAKE CUTOFF EXCEEDED: Department '{branch_label}' has reached its AICTE Approved Intake cap of {appr_intake} seats ({act_enr}/{appr_intake} seats filled). Admissions beyond approved cutoff are strictly prohibited."
+                    })
+                elif act_enr >= appr_intake - 2:
+                    warnings.append({
+                        "code": "NEAR_APPROVED_INTAKE_CAP",
+                        "field": "approved_intake",
+                        "message": f"Department '{branch_label}' is approaching approved intake cutoff ({act_enr}/{appr_intake} seats filled)."
+                    })
 
-                # TFWS Quota check (Strictly 5% supernumerary quota = 3 seats for a 60-seat department)
-                if is_tfws:
-                    tfws_appr = prog.get("tfws_approved", 3)
-                    tfws_enr = prog.get("tfws_enrolled", 0)
-                    if tfws_enr >= tfws_appr:
-                        errors.append({
-                            "code": "EXCEEDING_TFWS_QUOTA",
-                            "field": "tfws_quota",
-                            "message": f"TFWS QUOTA VIOLATION: Exceeds sanctioned 5% Tuition Fee Waiver Scheme capacity ({tfws_enr}/{tfws_appr} seats filled in {prog.get('branch', branch_name)}). Under AICTE norms, TFWS is strictly capped at 5% of approved intake (3 seats per division of 60)."
-                        })
-                    elif tfws_enr >= tfws_appr - 1:
-                        warnings.append({
-                            "code": "NEAR_TFWS_QUOTA_CAP",
-                            "field": "tfws_quota",
-                            "message": f"TFWS quota in {prog.get('branch', branch_name)} is near capacity ({tfws_enr}/{tfws_appr} seats filled)."
-                        })
+            # TFWS Quota check (Strictly 5% supernumerary quota = 3 seats for a 60-seat department)
+            if is_tfws:
+                tfws_appr = max(3, prog.get("tfws_approved", 3) if prog else 3)
+                tfws_enr = prog.get("tfws_enrolled", 0) if prog else 0
+                if tfws_enr >= tfws_appr:
+                    errors.append({
+                        "code": "EXCEEDING_TFWS_QUOTA",
+                        "field": "tfws_quota",
+                        "message": f"TFWS QUOTA VIOLATION: Exceeds sanctioned 5% Tuition Fee Waiver Scheme capacity ({tfws_enr}/{tfws_appr} seats filled in {branch_label}). Under AICTE norms, TFWS is strictly capped at 5% of approved intake (3 seats per division of 60)."
+                    })
+                elif tfws_enr >= tfws_appr - 1:
+                    warnings.append({
+                        "code": "NEAR_TFWS_QUOTA_CAP",
+                        "field": "tfws_quota",
+                        "message": f"TFWS quota in {branch_label} is near capacity ({tfws_enr}/{tfws_appr} seats filled)."
+                    })
 
-                # EWS Quota check (Strictly 10% supernumerary quota = 6 seats for a 60-seat department)
-                if is_ews:
-                    ews_appr = prog.get("ews_approved", 6)
-                    ews_enr = prog.get("ews_enrolled", 0)
-                    if ews_enr >= ews_appr:
-                        errors.append({
-                            "code": "EXCEEDING_EWS_QUOTA",
-                            "field": "ews_quota",
-                            "message": f"EWS QUOTA VIOLATION: Exceeds sanctioned 10% Economically Weaker Section supernumerary capacity ({ews_enr}/{ews_appr} seats filled in {prog.get('branch', branch_name)}). Under AICTE norms, EWS is strictly capped at 10% of approved intake (6 seats per division of 60)."
-                        })
-                    elif ews_enr >= ews_appr - 1:
-                        warnings.append({
-                            "code": "NEAR_EWS_QUOTA_CAP",
-                            "field": "ews_quota",
-                            "message": f"EWS quota in {prog.get('branch', branch_name)} is near capacity ({ews_enr}/{ews_appr} seats filled)."
-                        })
+            # EWS Quota check (Strictly 10% supernumerary quota = 6 seats for a 60-seat department)
+            if is_ews:
+                ews_appr = max(6, prog.get("ews_approved", 6) if prog else 6)
+                ews_enr = prog.get("ews_enrolled", 0) if prog else 0
+                if ews_enr >= ews_appr:
+                    errors.append({
+                        "code": "EXCEEDING_EWS_QUOTA",
+                        "field": "ews_quota",
+                        "message": f"EWS QUOTA VIOLATION: Exceeds sanctioned 10% Economically Weaker Section supernumerary capacity ({ews_enr}/{ews_appr} seats filled in {branch_label}). Under AICTE norms, EWS is strictly capped at 10% of approved intake (6 seats per division of 60)."
+                    })
+                elif ews_enr >= ews_appr - 1:
+                    warnings.append({
+                        "code": "NEAR_EWS_QUOTA_CAP",
+                        "field": "ews_quota",
+                        "message": f"EWS quota in {branch_label} is near capacity ({ews_enr}/{ews_appr} seats filled)."
+                    })
 
-                # General Supernumerary quota check (Max sanctioned supernumerary ceiling)
-                if is_supernumerary and not is_tfws and not is_ews:
-                    sup_appr = prog.get("supernumerary_approved", 11)
-                    sup_enr = prog.get("supernumerary_enrolled", 0)
-                    if sup_enr >= sup_appr:
-                        errors.append({
-                            "code": "EXCEEDING_SUPERNUMERARY_QUOTA",
-                            "field": "supernumerary_seats",
-                            "message": f"SUPERNUMERARY QUOTA VIOLATION: Exceeds approved supernumerary capacity ({sup_enr}/{sup_appr} seats filled in {prog.get('branch', branch_name)})."
-                        })
+            # General Supernumerary quota check (Max sanctioned supernumerary ceiling)
+            if is_supernumerary and not is_tfws and not is_ews:
+                sup_appr = max(11, prog.get("supernumerary_approved", 11) if prog else 11)
+                sup_enr = prog.get("supernumerary_enrolled", 0) if prog else inst_obj.get("actual_supernumerary", 0)
+                if sup_enr >= sup_appr:
+                    errors.append({
+                        "code": "EXCEEDING_SUPERNUMERARY_QUOTA",
+                        "field": "supernumerary_seats",
+                        "message": f"SUPERNUMERARY QUOTA VIOLATION: Exceeds approved supernumerary capacity ({sup_enr}/{sup_appr} seats filled in {branch_label})."
+                    })
 
-                # NRI quota check
-                if is_nri:
-                    nri_appr = prog.get("nri_approved", 0)
-                    nri_enr = prog.get("nri_enrolled", 0)
-                    if nri_enr >= nri_appr:
-                        errors.append({
-                            "code": "EXCEEDING_NRI_QUOTA",
-                            "field": "nri_category",
-                            "message": f"NRI QUOTA VIOLATION: Exceeds sanctioned 5% NRI seats ({nri_enr}/{nri_appr} filled)."
-                        })
+            # NRI quota check
+            if is_nri:
+                nri_appr = max(3, prog.get("nri_approved", 3) if prog else 3)
+                nri_enr = prog.get("nri_enrolled", 0) if prog else inst_obj.get("actual_nri", 0)
+                if nri_enr >= nri_appr:
+                    errors.append({
+                        "code": "EXCEEDING_NRI_QUOTA",
+                        "field": "nri_category",
+                        "message": f"NRI QUOTA VIOLATION: Exceeds sanctioned 5% NRI seats ({nri_enr}/{nri_appr} filled)."
+                    })
 
-                # Foreign National quota check
-                if is_fn:
-                    fn_appr = prog.get("fn_approved", 0)
-                    fn_enr = prog.get("fn_enrolled", 0)
-                    if fn_enr >= fn_appr:
-                        errors.append({
-                            "code": "EXCEEDING_FN_QUOTA",
-                            "field": "foreign_national_status",
-                            "message": f"FOREIGN NATIONAL QUOTA VIOLATION: Exceeds sanctioned FN seats ({fn_enr}/{fn_appr} filled)."
-                        })
+            # Foreign National quota check
+            if is_fn:
+                fn_appr = max(9, prog.get("fn_approved", 9) if prog else 9)
+                fn_enr = prog.get("fn_enrolled", 0) if prog else inst_obj.get("actual_fn", 0)
+                if fn_enr >= fn_appr:
+                    errors.append({
+                        "code": "EXCEEDING_FN_QUOTA",
+                        "field": "foreign_national_status",
+                        "message": f"FOREIGN NATIONAL QUOTA VIOLATION: Exceeds sanctioned FN seats ({fn_enr}/{fn_appr} filled)."
+                    })
 
         # 5. Inconsistencies in Student Data
         if not record.get("student_id") or not str(record.get("student_id")).strip():
@@ -731,17 +784,20 @@ class DatabaseManager:
         # Capacity & Intake calculations
         total_approved_intake = sum(i.get("approved_intake", 0) for i in institutions)
         total_actual_enrolment = sum(i.get("actual_enrolment", 0) for i in institutions)
+        total_vacant_seats = sum(max(0, i.get("approved_intake", 0) - i.get("actual_enrolment", 0)) for i in institutions)
+        total_excess_seats = sum(max(0, i.get("actual_enrolment", 0) - i.get("approved_intake", 0)) for i in institutions)
+        
+        full_intake_institutions = [i for i in institutions if i.get("actual_enrolment", 0) == i.get("approved_intake", 0)]
+        excess_intake_institutions = [
+            i for i in institutions 
+            if i.get("actual_enrolment", 0) > i.get("approved_intake", 0) or i.get("intake_status") == "VIOLATION_EXCESS_INTAKE"
+        ]
+
         total_supernumerary_quota = sum(i.get("supernumerary_quota", 0) for i in institutions)
         total_tfws_quota = sum(sum(p.get("tfws_approved", 3) for p in i.get("programs", [])) for i in institutions)
         total_tfws_enrolled = sum(sum(p.get("tfws_enrolled", 0) for p in i.get("programs", [])) for i in institutions)
         total_ews_quota = sum(sum(p.get("ews_approved", 6) for p in i.get("programs", [])) for i in institutions)
         total_ews_enrolled = sum(sum(p.get("ews_enrolled", 0) for p in i.get("programs", [])) for i in institutions)
-
-        # Excess Admissions Detection
-        excess_intake_institutions = [
-            i for i in institutions 
-            if i.get("actual_enrolment", 0) > i.get("approved_intake", 0) or i.get("intake_status") == "VIOLATION_EXCESS_INTAKE"
-        ]
 
         total_credits = sum(s.get("abc_credits_total", 0) for s in students)
 
@@ -759,6 +815,10 @@ class DatabaseManager:
             "flagged_fraud_count": flagged_count,
             "total_approved_intake": total_approved_intake,
             "total_actual_enrolment": total_actual_enrolment,
+            "total_vacant_seats": total_vacant_seats,
+            "total_excess_seats": total_excess_seats,
+            "full_intake_count": len(full_intake_institutions),
+            "full_intake_institutions": full_intake_institutions,
             "intake_utilization_rate": round((total_actual_enrolment / max(1, total_approved_intake)) * 100, 1),
             "supernumerary_count": supernumerary_count,
             "supernumerary_quota_total": total_supernumerary_quota,
@@ -790,11 +850,26 @@ class DatabaseManager:
 
         rows = []
         for inst in institutions:
-            appr = inst.get("approved_intake", 0)
+            appr = max(60, inst.get("approved_intake", 60))
             enr = inst.get("actual_enrolment", 0)
-            diff = enr - appr
-            status = "COMPLIANT" if diff <= 0 else f"VIOLATION (+{diff} EXCESS SEATS)"
+            vacant = max(0, appr - enr)
+            excess = max(0, enr - appr)
+            is_full = (enr == appr)
+            is_violation = (enr > appr)
             
+            if is_violation:
+                status = f"VIOLATION (+{excess} EXCESS SEATS)"
+            elif is_full:
+                status = "COMPLIANT_FULL (100% INTAKE FILLED)"
+            else:
+                status = f"COMPLIANT ({vacant} OPEN SEATS)"
+            
+            inst_students = [
+                s for s in students 
+                if s.get("institution") == inst.get("name") or s.get("aicte_id") == inst.get("aicte_id")
+            ]
+            registered_count = len(inst_students)
+
             # Aggregate TFWS and EWS for this institution
             inst_tfws_appr = sum(p.get("tfws_approved", 3) for p in inst.get("programs", []))
             inst_tfws_enr = sum(p.get("tfws_enrolled", 0) for p in inst.get("programs", []))
@@ -804,11 +879,18 @@ class DatabaseManager:
             rows.append({
                 "aicte_id": inst.get("aicte_id"),
                 "institution_name": inst.get("name"),
+                "short_name": inst.get("short_name", inst.get("name")),
                 "state": inst.get("state"),
                 "category": inst.get("category"),
+                "departments_count": len(inst.get("programs", [])),
                 "approved_intake": appr,
                 "actual_enrolment": enr,
-                "vacancy_or_excess": diff,
+                "registered_students": registered_count,
+                "vacant_seats": vacant,
+                "excess_seats": excess,
+                "is_full": is_full,
+                "is_violation": is_violation,
+                "vacancy_or_excess": excess if is_violation else -vacant,
                 "tfws_approved": inst_tfws_appr,
                 "tfws_enrolled": inst_tfws_enr,
                 "ews_approved": inst_ews_appr,
@@ -818,7 +900,8 @@ class DatabaseManager:
                 "nri_enrolled": inst.get("actual_nri", 0),
                 "fn_enrolled": inst.get("actual_fn", 0),
                 "compliance_status": status,
-                "compliance_score": inst.get("compliance_score", 95.0)
+                "compliance_score": inst.get("compliance_score", 95.0),
+                "programs": inst.get("programs", [])
             })
 
         return {
@@ -826,7 +909,11 @@ class DatabaseManager:
             "generated_at": datetime.now().isoformat(),
             "report_type": report_type,
             "total_institutions_audited": len(institutions),
-            "total_students_enrolled": len(students),
+            "total_students_enrolled": sum(i.get("actual_enrolment", 0) for i in institutions),
+            "total_approved_intake": sum(i.get("approved_intake", 0) for i in institutions),
+            "total_registered_students": len(students),
+            "total_vacant_seats": sum(max(0, i.get("approved_intake", 0) - i.get("actual_enrolment", 0)) for i in institutions),
+            "total_excess_seats": sum(max(0, i.get("actual_enrolment", 0) - i.get("approved_intake", 0)) for i in institutions),
             "data": rows
         }
 
