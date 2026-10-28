@@ -83,10 +83,33 @@ class DatabaseManager:
         if not self.connected_to_mongo:
             return
         try:
-            if self.db.students.count_documents({}) == 0:
-                self.db.students.insert_many([dict(s) for s in INITIAL_STUDENTS])
-            if self.db.institutions.count_documents({}) == 0:
-                self.db.institutions.insert_many([dict(i) for i in INSTITUTIONS])
+            # Sync / migrate institutions with standard 60-seat department cutoff
+            sample_inst = self.db.institutions.find_one({"aicte_id": "1-33271891"})
+            needs_inst_sync = (
+                self.db.institutions.count_documents({}) < len(INSTITUTIONS) or
+                sample_inst is None or
+                sample_inst.get("approved_intake") in [0, None] or
+                "programs" not in sample_inst
+            )
+            if needs_inst_sync:
+                print("Syncing AICTE institutions with 60-seat department cutoff to MongoDB...")
+                for inst in INSTITUTIONS:
+                    self.db.institutions.update_one(
+                        {"aicte_id": inst["aicte_id"]},
+                        {"$set": dict(inst)},
+                        upsert=True
+                    )
+            
+            # Sync authentic student records
+            if self.db.students.count_documents({}) < len(INITIAL_STUDENTS):
+                print("Syncing authentic APAAR student records to MongoDB...")
+                for stu in INITIAL_STUDENTS:
+                    self.db.students.update_one(
+                        {"apaar_id": stu["apaar_id"]},
+                        {"$set": dict(stu)},
+                        upsert=True
+                    )
+
             if self.db.audit_logs.count_documents({}) == 0:
                 self.db.audit_logs.insert_many([dict(a) for a in INITIAL_AUDIT_LOGS])
         except Exception as e:

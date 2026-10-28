@@ -17,8 +17,19 @@ load_dotenv()
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 app = Flask(__name__)
-# Enable CORS for Next.js frontend running on port 3000
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+# Enable CORS for Next.js frontend (local and Vercel)
+CORS(app, resources={r"/api/*": {"origins": "*"}}, supports_credentials=True)
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-AICTE-API-KEY"
+    return response
+
+@app.route("/api/<path:path>", methods=["OPTIONS"])
+def handle_options(path):
+    return jsonify({"status": "ok"}), 200
 
 
 @app.route("/api/status", methods=["GET"])
@@ -496,12 +507,27 @@ def auth_login():
     return jsonify({"success": False, "message": "Invalid credentials. Use provided SIH Evaluator quick buttons."}), 401
 
 
-@app.route("/api/seed", methods=["POST"])
+@app.route("/api/seed", methods=["POST", "GET"])
 def seed_data():
     db_manager.memory_students = [dict(s) for s in INITIAL_STUDENTS]
     db_manager.memory_institutions = [dict(i) for i in INSTITUTIONS]
     db_manager.memory_audit_logs = [dict(a) for a in INITIAL_AUDIT_LOGS]
-    return jsonify({"success": True, "message": "Database reset and seeded with AICTE intake and APAAR demo records."})
+    if db_manager.connected_to_mongo:
+        try:
+            db_manager.db.institutions.delete_many({})
+            db_manager.db.institutions.insert_many([dict(i) for i in INSTITUTIONS])
+            db_manager.db.students.delete_many({})
+            db_manager.db.students.insert_many([dict(s) for s in INITIAL_STUDENTS])
+            db_manager.db.audit_logs.delete_many({})
+            db_manager.db.audit_logs.insert_many([dict(a) for a in INITIAL_AUDIT_LOGS])
+        except Exception as e:
+            print("MongoDB seed sync error:", e)
+    return jsonify({
+        "success": True, 
+        "message": "Database reset and seeded with AICTE intake and APAAR demo records.",
+        "institutions_count": len(INSTITUTIONS),
+        "students_count": len(INITIAL_STUDENTS)
+    })
 
 
 if __name__ == "__main__":
