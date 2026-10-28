@@ -1,7 +1,8 @@
 """
-Seed data for AICTE APAAR ID Student Management, Validation & Verification Platform
-Contains realistic student data with Approved Intake, Supernumerary Seats, NRI, OCI, FN fields,
-and institution-level intake quotas for automated anomaly detection.
+Seed data for AICTE APAAR ID Student Management, Validation & Verification Platform.
+Contains realistic student data with Approved Intake (standard 60 seats per department cutoff),
+TFWS (5% supernumerary quota = 3 seats), EWS (10% supernumerary quota = 6 seats),
+NRI, OCI, and Foreign National (FN) fields for real-time anomaly detection.
 """
 
 INSTITUTIONS = [
@@ -11,14 +12,18 @@ INSTITUTIONS = [
         "short_name": "DTU Delhi",
         "state": "Delhi",
         "category": "AICTE Approved - State University / Tier 1",
-        "approved_intake": 720,
-        "actual_enrolment": 715,
-        "supernumerary_quota": 72,
-        "actual_supernumerary": 68,
-        "nri_quota": 36,
-        "actual_nri": 24,
-        "fn_quota": 36,
-        "actual_fn": 18,
+        "approved_intake": 240,         # 4 departments × 60 seats standard cutoff
+        "actual_enrolment": 224,        # Regular enrolled
+        "tfws_quota": 12,               # 4 depts × 3 seats (5% of 60)
+        "actual_tfws": 9,
+        "ews_quota": 24,                # 4 depts × 6 seats (10% of 60)
+        "actual_ews": 20,
+        "supernumerary_quota": 44,      # Total supernumerary (12 TFWS + 24 EWS + 8 PMSSS/Sports)
+        "actual_supernumerary": 34,
+        "nri_quota": 12,                # 4 depts × 3 seats (5%)
+        "actual_nri": 6,
+        "fn_quota": 36,                 # 4 depts × 9 seats (15%)
+        "actual_fn": 6,
         "intake_status": "COMPLIANT",
         "compliance_score": 98.4,
         "api_key": "aicte_sec_dtu_2026_98a7b",
@@ -26,50 +31,66 @@ INSTITUTIONS = [
             {
                 "program": "B.Tech Computer Science & Engineering",
                 "branch": "CSE",
-                "approved_intake": 120,
-                "actual_enrolment": 118,
-                "supernumerary_approved": 12,
-                "supernumerary_enrolled": 11,
-                "nri_approved": 6,
-                "nri_enrolled": 4,
-                "fn_approved": 6,
+                "approved_intake": 60,         # Standard AICTE Department Cutoff
+                "actual_enrolment": 58,        # 2 regular seats available
+                "tfws_approved": 3,            # 5% TFWS quota (3 seats)
+                "tfws_enrolled": 3,            # Full - any additional TFWS student triggers EXCEEDING_TFWS_QUOTA!
+                "ews_approved": 6,             # 10% EWS quota (6 seats)
+                "ews_enrolled": 5,             # 1 EWS seat available
+                "supernumerary_approved": 11,  # 3 TFWS + 6 EWS + 2 PMSSS/Sports
+                "supernumerary_enrolled": 10,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 9,
                 "fn_enrolled": 2
             },
             {
                 "program": "B.Tech Artificial Intelligence & Data Science",
                 "branch": "AI & DS",
-                "approved_intake": 60,
-                "actual_enrolment": 60,
-                "supernumerary_approved": 6,
-                "supernumerary_enrolled": 6,
+                "approved_intake": 60,         # Standard AICTE Department Cutoff
+                "actual_enrolment": 59,        # 1 regular seat available
+                "tfws_approved": 3,            # 5% TFWS quota
+                "tfws_enrolled": 2,            # 1 TFWS seat available
+                "ews_approved": 6,             # 10% EWS quota
+                "ews_enrolled": 6,             # Full - any additional EWS student triggers EXCEEDING_EWS_QUOTA!
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 9,
                 "nri_approved": 3,
-                "nri_enrolled": 2,
-                "fn_approved": 3,
+                "nri_enrolled": 1,
+                "fn_approved": 9,
                 "fn_enrolled": 1
             },
             {
                 "program": "B.Tech Electronics & Telecommunication",
                 "branch": "ENTC",
-                "approved_intake": 120,
-                "actual_enrolment": 115,
-                "supernumerary_approved": 12,
-                "supernumerary_enrolled": 10,
-                "nri_approved": 6,
-                "nri_enrolled": 3,
-                "fn_approved": 6,
+                "approved_intake": 60,
+                "actual_enrolment": 55,
+                "tfws_approved": 3,
+                "tfws_enrolled": 2,
+                "ews_approved": 6,
+                "ews_enrolled": 5,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 8,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 9,
                 "fn_enrolled": 2
             },
             {
                 "program": "B.Tech Mechanical Engineering",
                 "branch": "ME",
-                "approved_intake": 120,
-                "actual_enrolment": 114,
-                "supernumerary_approved": 12,
-                "supernumerary_enrolled": 10,
-                "nri_approved": 6,
-                "nri_enrolled": 3,
-                "fn_approved": 6,
-                "fn_enrolled": 2
+                "approved_intake": 60,
+                "actual_enrolment": 52,
+                "tfws_approved": 3,
+                "tfws_enrolled": 2,
+                "ews_approved": 6,
+                "ews_enrolled": 4,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 7,
+                "nri_approved": 3,
+                "nri_enrolled": 1,
+                "fn_approved": 9,
+                "fn_enrolled": 1
             }
         ]
     },
@@ -79,14 +100,18 @@ INSTITUTIONS = [
         "short_name": "VJTI Mumbai",
         "state": "Maharashtra",
         "category": "AICTE Approved - Autonomous",
-        "approved_intake": 540,
-        "actual_enrolment": 538,
-        "supernumerary_quota": 54,
-        "actual_supernumerary": 51,
-        "nri_quota": 27,
-        "actual_nri": 19,
+        "approved_intake": 180,        # 3 departments × 60 seats
+        "actual_enrolment": 174,
+        "tfws_quota": 9,               # 3 depts × 3 seats
+        "actual_tfws": 7,
+        "ews_quota": 18,               # 3 depts × 6 seats
+        "actual_ews": 15,
+        "supernumerary_quota": 33,
+        "actual_supernumerary": 26,
+        "nri_quota": 9,
+        "actual_nri": 5,
         "fn_quota": 27,
-        "actual_fn": 12,
+        "actual_fn": 4,
         "intake_status": "COMPLIANT",
         "compliance_score": 99.1,
         "api_key": "aicte_sec_vjti_2026_44b1c",
@@ -94,25 +119,49 @@ INSTITUTIONS = [
             {
                 "program": "B.Tech Computer Science & Engineering",
                 "branch": "CSE",
-                "approved_intake": 90,
-                "actual_enrolment": 90,
-                "supernumerary_approved": 9,
-                "supernumerary_enrolled": 9,
-                "nri_approved": 4,
-                "nri_enrolled": 3,
-                "fn_approved": 4,
+                "approved_intake": 60,
+                "actual_enrolment": 60,        # Cutoff reached (60/60)
+                "tfws_approved": 3,
+                "tfws_enrolled": 3,
+                "ews_approved": 6,
+                "ews_enrolled": 6,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 10,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 9,
                 "fn_enrolled": 2
             },
             {
                 "program": "B.Tech Artificial Intelligence & Data Science",
                 "branch": "AI & DS",
                 "approved_intake": 60,
-                "actual_enrolment": 59,
-                "supernumerary_approved": 6,
-                "supernumerary_enrolled": 6,
+                "actual_enrolment": 58,
+                "tfws_approved": 3,
+                "tfws_enrolled": 2,
+                "ews_approved": 6,
+                "ews_enrolled": 5,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 8,
                 "nri_approved": 3,
                 "nri_enrolled": 2,
-                "fn_approved": 3,
+                "fn_approved": 9,
+                "fn_enrolled": 1
+            },
+            {
+                "program": "B.Tech Mechanical Engineering",
+                "branch": "ME",
+                "approved_intake": 60,
+                "actual_enrolment": 56,
+                "tfws_approved": 3,
+                "tfws_enrolled": 2,
+                "ews_approved": 6,
+                "ews_enrolled": 4,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 8,
+                "nri_approved": 3,
+                "nri_enrolled": 1,
+                "fn_approved": 9,
                 "fn_enrolled": 1
             }
         ]
@@ -123,14 +172,18 @@ INSTITUTIONS = [
         "short_name": "COEP Pune",
         "state": "Maharashtra",
         "category": "AICTE Approved - Technological University",
-        "approved_intake": 600,
-        "actual_enrolment": 595,
-        "supernumerary_quota": 60,
-        "actual_supernumerary": 57,
-        "nri_quota": 30,
-        "actual_nri": 21,
-        "fn_quota": 30,
-        "actual_fn": 15,
+        "approved_intake": 180,        # 3 departments × 60 seats
+        "actual_enrolment": 176,
+        "tfws_quota": 9,
+        "actual_tfws": 8,
+        "ews_quota": 18,
+        "actual_ews": 16,
+        "supernumerary_quota": 33,
+        "actual_supernumerary": 28,
+        "nri_quota": 9,
+        "actual_nri": 6,
+        "fn_quota": 27,
+        "actual_fn": 4,
         "intake_status": "COMPLIANT",
         "compliance_score": 97.8,
         "api_key": "aicte_sec_coep_2026_12e9f",
@@ -138,14 +191,50 @@ INSTITUTIONS = [
             {
                 "program": "B.Tech Electronics & Telecommunication",
                 "branch": "ENTC",
-                "approved_intake": 120,
-                "actual_enrolment": 119,
-                "supernumerary_approved": 12,
-                "supernumerary_enrolled": 11,
-                "nri_approved": 6,
-                "nri_enrolled": 4,
-                "fn_approved": 6,
-                "fn_enrolled": 3
+                "approved_intake": 60,
+                "actual_enrolment": 59,
+                "tfws_approved": 3,
+                "tfws_enrolled": 3,
+                "ews_approved": 6,
+                "ews_enrolled": 5,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 10,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 9,
+                "fn_enrolled": 2
+            },
+            {
+                "program": "B.Tech Computer Science & Engineering",
+                "branch": "CSE",
+                "approved_intake": 60,
+                "actual_enrolment": 60,        # Cutoff reached (60/60)
+                "tfws_approved": 3,
+                "tfws_enrolled": 3,
+                "ews_approved": 6,
+                "ews_enrolled": 6,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 10,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 9,
+                "fn_enrolled": 1
+            },
+            {
+                "program": "B.Tech Electrical Engineering",
+                "branch": "EE",
+                "approved_intake": 60,
+                "actual_enrolment": 57,
+                "tfws_approved": 3,
+                "tfws_enrolled": 2,
+                "ews_approved": 6,
+                "ews_enrolled": 5,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 8,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 9,
+                "fn_enrolled": 1
             }
         ]
     },
@@ -155,28 +244,36 @@ INSTITUTIONS = [
         "short_name": "Apex Inst",
         "state": "Uttar Pradesh",
         "category": "AICTE Approved - Private Institution",
-        "approved_intake": 240,
-        "actual_enrolment": 254,
-        "supernumerary_quota": 24,
-        "actual_supernumerary": 29,
-        "nri_quota": 12,
-        "actual_nri": 14,
-        "fn_quota": 12,
-        "actual_fn": 2,
+        "approved_intake": 60,         # Sanctioned department cutoff: 60
+        "actual_enrolment": 68,        # +8 EXCESS ADMISSION VIOLATION!
+        "tfws_quota": 3,               # 5% TFWS quota (3 seats)
+        "actual_tfws": 5,              # +2 EXCESS TFWS VIOLATION!
+        "ews_quota": 6,                # 10% EWS quota (6 seats)
+        "actual_ews": 8,               # +2 EXCESS EWS VIOLATION!
+        "supernumerary_quota": 11,
+        "actual_supernumerary": 16,    # +5 EXCESS SUPERNUMERARY VIOLATION!
+        "nri_quota": 3,
+        "actual_nri": 4,               # +1 EXCESS NRI!
+        "fn_quota": 9,
+        "actual_fn": 0,
         "intake_status": "VIOLATION_EXCESS_INTAKE",
-        "compliance_score": 62.4,
+        "compliance_score": 58.4,
         "api_key": "aicte_sec_apex_2026_99x88",
         "programs": [
             {
                 "program": "B.Tech Computer Science & Engineering",
                 "branch": "CSE",
-                "approved_intake": 60,
-                "actual_enrolment": 68,
-                "supernumerary_approved": 6,
-                "supernumerary_enrolled": 9,
+                "approved_intake": 60,         # Standard Cutoff: 60 seats
+                "actual_enrolment": 68,        # Excess regular admission (+8)
+                "tfws_approved": 3,            # Sanctioned TFWS
+                "tfws_enrolled": 5,            # Excess TFWS admission (+2)
+                "ews_approved": 6,             # Sanctioned EWS
+                "ews_enrolled": 8,             # Excess EWS admission (+2)
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 16,  # Excess total supernumerary (+5)
                 "nri_approved": 3,
                 "nri_enrolled": 4,
-                "fn_approved": 3,
+                "fn_approved": 9,
                 "fn_enrolled": 0
             }
         ]
@@ -187,14 +284,18 @@ INSTITUTIONS = [
         "short_name": "Jadavpur Univ",
         "state": "West Bengal",
         "category": "AICTE Approved - Tier 1",
-        "approved_intake": 480,
-        "actual_enrolment": 472,
-        "supernumerary_quota": 48,
-        "actual_supernumerary": 42,
-        "nri_quota": 24,
-        "actual_nri": 15,
-        "fn_quota": 24,
-        "actual_fn": 10,
+        "approved_intake": 120,        # 2 departments × 60 seats
+        "actual_enrolment": 116,
+        "tfws_quota": 6,
+        "actual_tfws": 5,
+        "ews_quota": 12,
+        "actual_ews": 10,
+        "supernumerary_quota": 22,
+        "actual_supernumerary": 18,
+        "nri_quota": 6,
+        "actual_nri": 3,
+        "fn_quota": 18,
+        "actual_fn": 4,
         "intake_status": "COMPLIANT",
         "compliance_score": 96.5,
         "api_key": "aicte_sec_ju_2026_55k29",
@@ -202,14 +303,34 @@ INSTITUTIONS = [
             {
                 "program": "B.Tech Electrical Engineering",
                 "branch": "EE",
-                "approved_intake": 120,
-                "actual_enrolment": 118,
-                "supernumerary_approved": 12,
-                "supernumerary_enrolled": 10,
-                "nri_approved": 6,
-                "nri_enrolled": 4,
-                "fn_approved": 6,
-                "fn_enrolled": 3
+                "approved_intake": 60,
+                "actual_enrolment": 58,
+                "tfws_approved": 3,
+                "tfws_enrolled": 2,
+                "ews_approved": 6,
+                "ews_enrolled": 5,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 9,
+                "nri_approved": 3,
+                "nri_enrolled": 2,
+                "fn_approved": 9,
+                "fn_enrolled": 2
+            },
+            {
+                "program": "B.Tech Mechanical Engineering",
+                "branch": "ME",
+                "approved_intake": 60,
+                "actual_enrolment": 58,
+                "tfws_approved": 3,
+                "tfws_enrolled": 3,
+                "ews_approved": 6,
+                "ews_enrolled": 5,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 9,
+                "nri_approved": 3,
+                "nri_enrolled": 1,
+                "fn_approved": 9,
+                "fn_enrolled": 2
             }
         ]
     },
@@ -219,14 +340,18 @@ INSTITUTIONS = [
         "short_name": "XIM PGDM",
         "state": "Jharkhand",
         "category": "PGDM Approved Institution",
-        "approved_intake": 180,
-        "actual_enrolment": 180,
-        "supernumerary_quota": 18,
-        "actual_supernumerary": 15,
-        "nri_quota": 18,
-        "actual_nri": 12,
-        "fn_quota": 18,
-        "actual_fn": 6,
+        "approved_intake": 60,         # Standard AICTE PGDM Division Cutoff: 60
+        "actual_enrolment": 60,        # 60/60 enrolled
+        "tfws_quota": 3,
+        "actual_tfws": 3,
+        "ews_quota": 6,
+        "actual_ews": 6,
+        "supernumerary_quota": 11,
+        "actual_supernumerary": 10,
+        "nri_quota": 3,
+        "actual_nri": 3,
+        "fn_quota": 9,
+        "actual_fn": 2,
         "intake_status": "COMPLIANT",
         "compliance_score": 98.2,
         "api_key": "aicte_sec_xim_2026_77p22",
@@ -234,14 +359,18 @@ INSTITUTIONS = [
             {
                 "program": "Post Graduate Diploma in Management (PGDM)",
                 "branch": "PGDM",
-                "approved_intake": 180,
-                "actual_enrolment": 180,
-                "supernumerary_approved": 18,
-                "supernumerary_enrolled": 15,
-                "nri_approved": 18,
-                "nri_enrolled": 12,
-                "fn_approved": 18,
-                "fn_enrolled": 6
+                "approved_intake": 60,         # Standard 60 Cutoff
+                "actual_enrolment": 60,
+                "tfws_approved": 3,
+                "tfws_enrolled": 3,
+                "ews_approved": 6,
+                "ews_enrolled": 6,
+                "supernumerary_approved": 11,
+                "supernumerary_enrolled": 10,
+                "nri_approved": 3,
+                "nri_enrolled": 3,
+                "fn_approved": 9,
+                "fn_enrolled": 2
             }
         ]
     }
@@ -263,8 +392,8 @@ INITIAL_STUDENTS = [
         "branch": "CSE",
         "admission_year": 2022,
         "current_semester": 6,
-        "approved_intake": 120,
-        "actual_enrolment": 118,
+        "approved_intake": 60,          # Standard 60-seat department cutoff
+        "actual_enrolment": 58,
         "supernumerary_seat": False,
         "supernumerary_type": "None",
         "nri_category": "Not Applicable",
@@ -272,7 +401,7 @@ INITIAL_STUDENTS = [
         "oci_number": None,
         "foreign_national_status": False,
         "passport_country": "India",
-        "admission_category": "General",
+        "admission_category": "Regular Merit (General)",
         "admission_date": "2022-08-10",
         "student_consent": True,
         "consent_timestamp": "2022-08-10T10:15:00Z",
@@ -307,7 +436,7 @@ INITIAL_STUDENTS = [
             {"course": "Deep Learning by IIT Madras", "credits": 4, "certificate_id": "NPTEL23CS81"},
             {"course": "Cloud Computing by IIT Kharagpur", "credits": 3, "certificate_id": "NPTEL23CS99"}
         ],
-        "compliance_notes": "Enrolled under AICTE Sanctioned Regular Intake. Digilocker verified."
+        "compliance_notes": "Enrolled under AICTE Sanctioned Regular Intake (Cutoff: 60). Digilocker e-KYC verified."
     },
     {
         "apaar_id": "8412-9034-1187",
@@ -324,16 +453,20 @@ INITIAL_STUDENTS = [
         "branch": "AI & DS",
         "admission_year": 2023,
         "current_semester": 4,
-        "approved_intake": 60,
-        "actual_enrolment": 59,
+        "approved_intake": 60,          # Standard 60-seat department cutoff
+        "actual_enrolment": 58,
         "supernumerary_seat": True,
-        "supernumerary_type": "TFW",
+        "supernumerary_type": "TFWS",   # Tuition Fee Waiver Scheme
+        "tfws_eligible": True,
+        "family_annual_income": "₹4,20,000 / annum",
+        "tuition_fee_waived_percentage": 100,
+        "income_certificate_no": "REV-MH-2023-8812",
         "nri_category": "Not Applicable",
         "oci_status": False,
         "oci_number": None,
         "foreign_national_status": False,
         "passport_country": "India",
-        "admission_category": "Supernumerary - Tuition Fee Waiver (TFW)",
+        "admission_category": "Supernumerary - Tuition Fee Waiver Scheme (TFWS)",
         "admission_date": "2023-08-14",
         "student_consent": True,
         "consent_timestamp": "2023-08-14T11:20:00Z",
@@ -365,7 +498,65 @@ INITIAL_STUDENTS = [
         "swayam_nptel_credits": [
             {"course": "Data Mining by IIT Roorkee", "credits": 4, "certificate_id": "NPTEL24CS12"}
         ],
-        "compliance_notes": "Admitted under 5% AICTE Supernumerary TFW Quota with certified parental income < 8 LPA."
+        "compliance_notes": "Admitted under 5% AICTE Supernumerary TFWS Quota (Seat #2 of 3). Annual parental income < ₹8 LPA certified."
+    },
+    {
+        "apaar_id": "3192-8840-5261",
+        "student_id": "DTU/2023/AI/022",
+        "abc_id": "ABC-2023-319288",
+        "full_name": "Sneha R. Kulkarni",
+        "dob": "2004-06-18",
+        "gender": "Female",
+        "email": "sneha.kulkarni@dtu.ac.in",
+        "phone": "+91 97654 32190",
+        "institution": "Delhi Technological University",
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Artificial Intelligence & Data Science",
+        "branch": "AI & DS",
+        "admission_year": 2023,
+        "current_semester": 4,
+        "approved_intake": 60,          # Standard 60-seat department cutoff
+        "actual_enrolment": 59,
+        "supernumerary_seat": True,
+        "supernumerary_type": "EWS",    # Economically Weaker Section
+        "ews_eligible": True,
+        "family_annual_income": "₹5,40,000 / annum",
+        "ews_certificate_no": "EWS-DEL-2023-9941",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "oci_number": None,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "Supernumerary - Economically Weaker Section (EWS)",
+        "admission_date": "2023-08-16",
+        "student_consent": True,
+        "consent_timestamp": "2023-08-16T11:00:00Z",
+        "abc_credits_total": 82,
+        "cgpa": 9.20,
+        "kyc_status": "VERIFIED",
+        "status": "Verified",
+        "biometric_verified": True,
+        "blood_group": "B+",
+        "guardian_name": "Ramesh Kulkarni",
+        "address": "Kothrud, Pune, Maharashtra 411038",
+        "photo_url": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80",
+        "qr_token": "APAAR-AUTH:319288405261:AICTE-1-33271891:SEC310F",
+        "academic_history": [
+            {"semester": 1, "credits": 22, "sgpa": 9.10, "status": "Passed"},
+            {"semester": 2, "credits": 22, "sgpa": 9.30, "status": "Passed"},
+            {"semester": 3, "credits": 24, "sgpa": 9.20, "status": "Passed"}
+        ],
+        "degree_certificate": {
+            "certificate_id": "DEG-DTU-2027-0261",
+            "degree_name": "Bachelor of Technology (Artificial Intelligence & Data Science)",
+            "degree_body": "Delhi Technological University & AICTE",
+            "class_awarded": "First Class with Distinction",
+            "issue_date": "2027-06-30",
+            "chancellor_sign": True,
+            "registrar_sign": True
+        },
+        "swayam_nptel_credits": [],
+        "compliance_notes": "Admitted under AICTE 10% EWS Supernumerary Quota (Seat #6 of 6). Tahsildar EWS Certificate authenticated."
     },
     {
         "apaar_id": "9123-5544-7788",
@@ -382,8 +573,8 @@ INITIAL_STUDENTS = [
         "branch": "CSE",
         "admission_year": 2024,
         "current_semester": 2,
-        "approved_intake": 120,
-        "actual_enrolment": 118,
+        "approved_intake": 60,          # Standard 60-seat department cutoff
+        "actual_enrolment": 58,
         "supernumerary_seat": False,
         "supernumerary_type": "None",
         "nri_category": "NRI-Sponsored",
@@ -418,7 +609,7 @@ INITIAL_STUDENTS = [
             "registrar_sign": True
         },
         "swayam_nptel_credits": [],
-        "compliance_notes": "Admitted under 5% AICTE NRI Quota. NRI sponsorship affidavit and MEA attestation verified."
+        "compliance_notes": "Admitted under 5% AICTE NRI Quota (Seat #2 of 3). NRI sponsorship affidavit & MEA attestation verified."
     },
     {
         "apaar_id": "6671-2299-4411",
@@ -435,8 +626,8 @@ INITIAL_STUDENTS = [
         "branch": "ENTC",
         "admission_year": 2023,
         "current_semester": 4,
-        "approved_intake": 120,
-        "actual_enrolment": 119,
+        "approved_intake": 60,          # Standard 60-seat department cutoff
+        "actual_enrolment": 59,
         "supernumerary_seat": True,
         "supernumerary_type": "Foreign National (FN)",
         "nri_category": "Not Applicable",
@@ -473,7 +664,7 @@ INITIAL_STUDENTS = [
             "registrar_sign": True
         },
         "swayam_nptel_credits": [],
-        "compliance_notes": "ICCR / Foreign National 15% supernumerary quota seat. Valid student visa & FRO clearance verified."
+        "compliance_notes": "ICCR / Foreign National 15% supernumerary quota seat (Seat #2 of 9). Valid student visa & FRO clearance verified."
     },
     {
         "apaar_id": "4455-6677-8899",
@@ -490,8 +681,8 @@ INITIAL_STUDENTS = [
         "branch": "CSE",
         "admission_year": 2024,
         "current_semester": 2,
-        "approved_intake": 120,
-        "actual_enrolment": 118,
+        "approved_intake": 60,          # Standard 60-seat department cutoff
+        "actual_enrolment": 58,
         "supernumerary_seat": True,
         "supernumerary_type": "OCI / PIO Supernumerary",
         "nri_category": "Not Applicable",
@@ -543,8 +734,8 @@ INITIAL_STUDENTS = [
         "branch": "CSE",
         "admission_year": 2023,
         "current_semester": 3,
-        "approved_intake": 60,
-        "actual_enrolment": 68,
+        "approved_intake": 60,          # Standard 60 Cutoff
+        "actual_enrolment": 68,         # VIOLATION: Admitted 68 against 60 cutoff!
         "supernumerary_seat": False,
         "supernumerary_type": "None",
         "nri_category": "Not Applicable",
@@ -571,70 +762,17 @@ INITIAL_STUDENTS = [
         ],
         "degree_certificate": None,
         "swayam_nptel_credits": [],
-        "compliance_notes": "CRITICAL ANOMALY: Dual enrollment detected concurrently across DTU and Apex Institute. Apex Institute has also exceeded approved intake (68 enrolled vs 60 approved)."
-    },
-    {
-        "apaar_id": "3192-8840-5261",
-        "student_id": "DTU/2023/AI/022",
-        "abc_id": "ABC-2023-319288",
-        "full_name": "Sneha R. Kulkarni",
-        "dob": "2004-06-18",
-        "gender": "Female",
-        "email": "sneha.kulkarni@dtu.ac.in",
-        "phone": "+91 97654 32190",
-        "institution": "Delhi Technological University",
-        "aicte_id": "1-33271891",
-        "program": "B.Tech Artificial Intelligence & Data Science",
-        "branch": "AI & DS",
-        "admission_year": 2023,
-        "current_semester": 4,
-        "approved_intake": 60,
-        "actual_enrolment": 60,
-        "supernumerary_seat": True,
-        "supernumerary_type": "EWS Supernumerary",
-        "nri_category": "Not Applicable",
-        "oci_status": False,
-        "oci_number": None,
-        "foreign_national_status": False,
-        "passport_country": "India",
-        "admission_category": "Supernumerary - Economically Weaker Section (EWS)",
-        "admission_date": "2023-08-16",
-        "student_consent": True,
-        "consent_timestamp": "2023-08-16T11:00:00Z",
-        "abc_credits_total": 82,
-        "cgpa": 9.20,
-        "kyc_status": "VERIFIED",
-        "status": "Verified",
-        "biometric_verified": True,
-        "blood_group": "B+",
-        "guardian_name": "Ramesh Kulkarni",
-        "address": "Kothrud, Pune, Maharashtra 411038",
-        "photo_url": "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=300&q=80",
-        "qr_token": "APAAR-AUTH:319288405261:AICTE-1-33271891:SEC310F",
-        "academic_history": [
-            {"semester": 1, "credits": 22, "sgpa": 9.10, "status": "Passed"},
-            {"semester": 2, "credits": 22, "sgpa": 9.30, "status": "Passed"},
-            {"semester": 3, "credits": 24, "sgpa": 9.20, "status": "Passed"}
-        ],
-        "degree_certificate": {
-            "certificate_id": "DEG-DTU-2027-0261",
-            "degree_name": "Bachelor of Technology (Artificial Intelligence & Data Science)",
-            "degree_body": "Delhi Technological University & AICTE",
-            "class_awarded": "First Class with Distinction",
-            "issue_date": "2027-06-30",
-            "chancellor_sign": True,
-            "registrar_sign": True
-        },
-        "swayam_nptel_credits": [],
-        "compliance_notes": "Admitted under AICTE 10% EWS Supernumerary quota. Tahsildar income certificate authenticated."
+        "compliance_notes": "CRITICAL ANOMALIES: 1) Department regular cutoff exceeded (68 enrolled vs 60 sanctioned). 2) Concurrent dual enrollment detected across Apex Institute & DTU."
     }
 ]
 
 # Sample realistic batch for 1-Click Institutional Upload Demonstration (SIH Evaluators)
+# Tests the standard 60-seat department cutoff, TFWS 5% quota (3 seats), EWS 10% quota (6 seats),
+# and anomaly sentinels.
 SAMPLE_ADMISSION_BATCH = [
     {
         "apaar_id": "5512-8890-1122",
-        "student_id": "DTU/2024/CSE/055",
+        "student_id": "DTU/2024/CSE/059",
         "full_name": "Ananya Mukherjee",
         "dob": "2005-04-12",
         "gender": "Female",
@@ -645,45 +783,149 @@ SAMPLE_ADMISSION_BATCH = [
         "program": "B.Tech Computer Science & Engineering",
         "branch": "CSE",
         "admission_year": 2024,
-        "supernumerary_seat": True,
-        "supernumerary_type": "TFW",
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
         "nri_category": "Not Applicable",
         "oci_status": False,
         "foreign_national_status": False,
         "passport_country": "India",
-        "admission_category": "Supernumerary",
+        "admission_category": "Regular Merit (General)",
         "admission_date": "2024-08-11",
         "student_consent": True,
-        "expected_result": "VALID"
+        "expected_result": "VALID (Regular Seat #59 of 60)"
     },
     {
         "apaar_id": "7721-3300-9944",
-        "student_id": "DTU/2024/CSE/056",
-        "full_name": "Karthik Raja",
+        "student_id": "DTU/2024/AI/061",
+        "full_name": "Karthik Raja (TFWS Student)",
         "dob": "2004-11-25",
         "gender": "Male",
         "email": "karthik.raja@dtu.ac.in",
         "phone": "+91 94432 77192",
         "institution": "Delhi Technological University",
         "aicte_id": "1-33271891",
-        "program": "B.Tech Computer Science & Engineering",
-        "branch": "CSE",
+        "program": "B.Tech Artificial Intelligence & Data Science",
+        "branch": "AI & DS",
         "admission_year": 2024,
-        "supernumerary_seat": False,
-        "supernumerary_type": "None",
-        "nri_category": "NRI",
+        "supernumerary_seat": True,
+        "supernumerary_type": "TFWS",
+        "tfws_eligible": True,
+        "family_annual_income": "₹3,80,000 / annum",
+        "nri_category": "Not Applicable",
         "oci_status": False,
         "foreign_national_status": False,
         "passport_country": "India",
-        "admission_category": "NRI",
+        "admission_category": "Supernumerary - Tuition Fee Waiver Scheme (TFWS)",
         "admission_date": "2024-08-11",
         "student_consent": True,
-        "expected_result": "VALID"
+        "expected_result": "VALID (TFWS Seat #3 of 3 Approved)"
+    },
+    {
+        "apaar_id": "8833-2211-4455",
+        "student_id": "DTU/2024/ME/062",
+        "full_name": "Manish Tiwari (EWS Student)",
+        "dob": "2004-03-19",
+        "gender": "Male",
+        "email": "manish.t@dtu.ac.in",
+        "phone": "+91 98114 88332",
+        "institution": "Delhi Technological University",
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Mechanical Engineering",
+        "branch": "ME",
+        "admission_year": 2024,
+        "supernumerary_seat": True,
+        "supernumerary_type": "EWS",
+        "ews_eligible": True,
+        "family_annual_income": "₹5,20,000 / annum",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "Supernumerary - Economically Weaker Section (EWS)",
+        "admission_date": "2024-08-11",
+        "student_consent": True,
+        "expected_result": "VALID (EWS Seat #5 of 6 Approved)"
+    },
+    {
+        "apaar_id": "9944-1188-2233",
+        "student_id": "DTU/2024/CSE/091",
+        "full_name": "Siddharth Jain (TFWS Over-Quota Attempt)",
+        "dob": "2004-09-08",
+        "gender": "Male",
+        "email": "sid.jain@dtu.ac.in",
+        "phone": "+91 98101 99441",
+        "institution": "Delhi Technological University",
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Computer Science & Engineering",
+        "branch": "CSE", # DTU CSE already has 3/3 TFWS seats filled!
+        "admission_year": 2024,
+        "supernumerary_seat": True,
+        "supernumerary_type": "TFWS",
+        "tfws_eligible": True,
+        "family_annual_income": "₹4,10,000 / annum",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "Supernumerary - Tuition Fee Waiver Scheme (TFWS)",
+        "admission_date": "2024-08-12",
+        "student_consent": True,
+        "expected_result": "FLAG_EXCEEDING_TFWS_QUOTA (All 3 TFWS seats filled in CSE)"
+    },
+    {
+        "apaar_id": "6611-3388-7744",
+        "student_id": "DTU/2024/AI/092",
+        "full_name": "Pooja Hegde (EWS Over-Quota Attempt)",
+        "dob": "2005-01-22",
+        "gender": "Female",
+        "email": "pooja.h@dtu.ac.in",
+        "phone": "+91 97234 66113",
+        "institution": "Delhi Technological University",
+        "aicte_id": "1-33271891",
+        "program": "B.Tech Artificial Intelligence & Data Science",
+        "branch": "AI & DS", # DTU AI&DS already has 6/6 EWS seats filled!
+        "admission_year": 2024,
+        "supernumerary_seat": True,
+        "supernumerary_type": "EWS",
+        "ews_eligible": True,
+        "family_annual_income": "₹5,80,000 / annum",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "Supernumerary - Economically Weaker Section (EWS)",
+        "admission_date": "2024-08-12",
+        "student_consent": True,
+        "expected_result": "FLAG_EXCEEDING_EWS_QUOTA (All 6 EWS seats filled in AI & DS)"
+    },
+    {
+        "apaar_id": "6644-2211-9988",
+        "student_id": "APEX/2024/CSE/069",
+        "full_name": "Sunil Chawla (Excess Department Cutoff Attempt)",
+        "dob": "2004-07-20",
+        "gender": "Male",
+        "email": "sunil.c@apex.edu.in",
+        "phone": "+91 97711 22334",
+        "institution": "Apex Institute of Advanced Technology",
+        "aicte_id": "1-99887766",
+        "program": "B.Tech Computer Science & Engineering",
+        "branch": "CSE", # Apex CSE is at 68/60 seats -> Exceeds 60 Cutoff!
+        "admission_year": 2024,
+        "supernumerary_seat": False,
+        "supernumerary_type": "None",
+        "nri_category": "Not Applicable",
+        "oci_status": False,
+        "foreign_national_status": False,
+        "passport_country": "India",
+        "admission_category": "Regular Merit",
+        "admission_date": "2024-08-15",
+        "student_consent": True,
+        "expected_result": "FLAG_EXCESS_APPROVED_INTAKE (Cutoff 60 seats exceeded!)"
     },
     {
         "apaar_id": "9999-0000-1111", # Duplicate / Concurrent Enrollment Trigger
         "student_id": "DTU/2024/CSE/099",
-        "full_name": "Vikramaditya Rao",
+        "full_name": "Vikramaditya Rao (Dual Enrollment Fraud)",
         "dob": "2003-05-12",
         "gender": "Male",
         "email": "v.rao@dtu.ac.in",
@@ -703,30 +945,6 @@ SAMPLE_ADMISSION_BATCH = [
         "admission_date": "2024-08-12",
         "student_consent": True,
         "expected_result": "FLAG_CROSS_INSTITUTION_DUPLICATE"
-    },
-    {
-        "apaar_id": "9283-4710-8521", # Duplicate in same institution Trigger
-        "student_id": "DTU/2024/CSE/100",
-        "full_name": "Aarav Sharma (Duplicate Attempt)",
-        "dob": "2003-08-14",
-        "gender": "Male",
-        "email": "aarav.dup@dtu.ac.in",
-        "phone": "+91 98112 45678",
-        "institution": "Delhi Technological University",
-        "aicte_id": "1-33271891",
-        "program": "B.Tech Computer Science & Engineering",
-        "branch": "CSE",
-        "admission_year": 2024,
-        "supernumerary_seat": False,
-        "supernumerary_type": "None",
-        "nri_category": "Not Applicable",
-        "oci_status": False,
-        "foreign_national_status": False,
-        "passport_country": "India",
-        "admission_category": "General",
-        "admission_date": "2024-08-12",
-        "student_consent": True,
-        "expected_result": "FLAG_DUPLICATE_APAAR"
     },
     {
         "apaar_id": "1234-5678-INVALID", # Invalid Format Trigger
@@ -751,30 +969,6 @@ SAMPLE_ADMISSION_BATCH = [
         "admission_date": "2024-08-12",
         "student_consent": True,
         "expected_result": "FLAG_INVALID_APAAR"
-    },
-    {
-        "apaar_id": "6644-2211-9988",
-        "student_id": "APEX/2024/CSE/069",
-        "full_name": "Sunil Chawla",
-        "dob": "2004-07-20",
-        "gender": "Male",
-        "email": "sunil.c@apex.edu.in",
-        "phone": "+91 97711 22334",
-        "institution": "Apex Institute of Advanced Technology", # Apex is at 68/60 seats -> Excess Intake!
-        "aicte_id": "1-99887766",
-        "program": "B.Tech Computer Science & Engineering",
-        "branch": "CSE",
-        "admission_year": 2024,
-        "supernumerary_seat": False,
-        "supernumerary_type": "None",
-        "nri_category": "Not Applicable",
-        "oci_status": False,
-        "foreign_national_status": False,
-        "passport_country": "India",
-        "admission_category": "General",
-        "admission_date": "2024-08-15",
-        "student_consent": True,
-        "expected_result": "FLAG_EXCESS_APPROVED_INTAKE"
     }
 ]
 
@@ -831,7 +1025,7 @@ INITIAL_AUDIT_LOGS = [
         "actor_name": "Dr. Pradeep Kumar",
         "actor_role": "INSTITUTION_VERIFIER",
         "institution": "Delhi Technological University",
-        "details": "Submitted 120 student admission records for B.Tech CSE (Academic Year 2024-25). Approved Intake: 120, Actual Enrolment: 118.",
+        "details": "Submitted 60 student admission records for B.Tech CSE (Academic Year 2024-25). Approved Intake: 60, Regular Enrolment: 58, TFWS: 3/3, EWS: 5/6.",
         "status": "SUCCESS",
         "timestamp": "2026-10-24T10:15:00Z"
     },
@@ -841,7 +1035,7 @@ INITIAL_AUDIT_LOGS = [
         "actor_name": "AICTE Automated Intake Sentinel",
         "actor_role": "SYSTEM",
         "institution": "Apex Institute of Advanced Technology",
-        "details": "Intake anomaly: Institution enrolled 68 students against AICTE Approved Intake of 60 (+8 excess regular admissions) in B.Tech CSE.",
+        "details": "Intake anomaly: Institution enrolled 68 students against AICTE Approved Intake cutoff of 60 (+8 excess regular admissions) in B.Tech CSE.",
         "status": "ALERT_TRIGGERED",
         "timestamp": "2026-10-24T12:30:00Z"
     },

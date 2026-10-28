@@ -370,6 +370,8 @@ def get_admissions_report():
         cw.writerow([
             "AICTE ID", "Institution Name", "State", "Category", 
             "Approved Intake", "Actual Enrolment", "Vacancy / Excess", 
+            "TFWS Enrolled", "TFWS Sanctioned Quota (5%)",
+            "EWS Enrolled", "EWS Sanctioned Quota (10%)",
             "Supernumerary Enrolled", "Supernumerary Quota", "NRI Enrolled", 
             "Foreign National Enrolled", "Compliance Status", "Compliance Score"
         ])
@@ -377,6 +379,8 @@ def get_admissions_report():
             cw.writerow([
                 row["aicte_id"], row["institution_name"], row["state"], row["category"],
                 row["approved_intake"], row["actual_enrolment"], row["vacancy_or_excess"],
+                row.get("tfws_enrolled", 0), row.get("tfws_approved", 0),
+                row.get("ews_enrolled", 0), row.get("ews_approved", 0),
                 row["supernumerary_enrolled"], row["supernumerary_quota"], row["nri_enrolled"],
                 row["fn_enrolled"], row["compliance_status"], row["compliance_score"]
             ])

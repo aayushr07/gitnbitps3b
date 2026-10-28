@@ -131,6 +131,18 @@ class DatabaseManager:
             if quota and quota != "All":
                 if quota == "Supernumerary":
                     filter_doc["supernumerary_seat"] = True
+                elif quota == "TFWS":
+                    filter_doc["$or"] = [
+                        {"supernumerary_type": "TFWS"},
+                        {"admission_category": "TFWS"},
+                        {"tfws_eligible": True}
+                    ]
+                elif quota == "EWS":
+                    filter_doc["$or"] = [
+                        {"supernumerary_type": "EWS"},
+                        {"admission_category": "EWS"},
+                        {"ews_eligible": True}
+                    ]
                 elif quota == "NRI":
                     filter_doc["nri_category"] = {"$in": ["NRI", "NRI-Sponsored"]}
                 elif quota == "OCI":
@@ -168,6 +180,10 @@ class DatabaseManager:
             if quota and quota != "All":
                 if quota == "Supernumerary":
                     filtered = [s for s in filtered if s.get("supernumerary_seat") is True]
+                elif quota == "TFWS":
+                    filtered = [s for s in filtered if s.get("supernumerary_type") == "TFWS" or s.get("admission_category") == "TFWS" or s.get("tfws_eligible") is True]
+                elif quota == "EWS":
+                    filtered = [s for s in filtered if s.get("supernumerary_type") == "EWS" or s.get("admission_category") == "EWS" or s.get("ews_eligible") is True]
                 elif quota == "NRI":
                     filtered = [s for s in filtered if s.get("nri_category") in ["NRI", "NRI-Sponsored"]]
                 elif quota == "OCI":
@@ -261,9 +277,15 @@ class DatabaseManager:
         inst_name = student_data.get("institution")
         aicte_id = student_data.get("aicte_id")
         branch = student_data.get("branch")
-        is_sup = student_data.get("supernumerary_seat")
+        is_tfws = (student_data.get("supernumerary_type") == "TFWS" or 
+                   student_data.get("admission_category") == "TFWS" or 
+                   student_data.get("tfws_eligible") is True)
+        is_ews = (student_data.get("supernumerary_type") == "EWS" or 
+                  student_data.get("admission_category") == "EWS" or 
+                  student_data.get("ews_eligible") is True)
+        is_sup = student_data.get("supernumerary_seat") or is_tfws or is_ews
         is_nri = student_data.get("nri_category") in ["NRI", "NRI-Sponsored"]
-        is_fn = student_data.get("foreign_national_status")
+        is_fn = bool(student_data.get("foreign_national_status") or (student_data.get("passport_country") and student_data.get("passport_country") not in ["None", "India", ""]))
 
         institutions = self.get_institutions()
         for inst in institutions:
@@ -271,6 +293,10 @@ class DatabaseManager:
                 inst["actual_enrolment"] = inst.get("actual_enrolment", 0) + 1
                 if is_sup:
                     inst["actual_supernumerary"] = inst.get("actual_supernumerary", 0) + 1
+                if is_tfws:
+                    inst["actual_tfws"] = inst.get("actual_tfws", 0) + 1
+                if is_ews:
+                    inst["actual_ews"] = inst.get("actual_ews", 0) + 1
                 if is_nri:
                     inst["actual_nri"] = inst.get("actual_nri", 0) + 1
                 if is_fn:
@@ -281,6 +307,10 @@ class DatabaseManager:
                         prog["actual_enrolment"] = prog.get("actual_enrolment", 0) + 1
                         if is_sup:
                             prog["supernumerary_enrolled"] = prog.get("supernumerary_enrolled", 0) + 1
+                        if is_tfws:
+                            prog["tfws_enrolled"] = prog.get("tfws_enrolled", 0) + 1
+                        if is_ews:
+                            prog["ews_enrolled"] = prog.get("ews_enrolled", 0) + 1
                         if is_nri:
                             prog["nri_enrolled"] = prog.get("nri_enrolled", 0) + 1
                         if is_fn:
@@ -387,8 +417,7 @@ class DatabaseManager:
         cross_inst_dups = [
             s for s in all_students
             if self.clean_id(s.get("apaar_id")) == clean_apaar and clean_apaar and
-            s.get("institution", "").lower() != inst_name.lower() and
-            s.get("status") in ["Verified", "Enrolled", "Active"]
+            s.get("institution", "").lower() != inst_name.lower()
         ]
         if cross_inst_dups:
             errors.append({
@@ -407,38 +436,78 @@ class DatabaseManager:
             prog_name = record.get("program", "")
             prog = next((p for p in inst_obj.get("programs", []) if p.get("branch", "").lower() == branch_name.lower() or p.get("program", "").lower() == prog_name.lower()), None)
             
-            is_supernumerary = bool(record.get("supernumerary_seat") or (record.get("supernumerary_type") and record.get("supernumerary_type") != "None"))
+            is_tfws = (record.get("supernumerary_type") == "TFWS" or 
+                       record.get("admission_category") == "TFWS" or 
+                       record.get("tfws_eligible") is True)
+            is_ews = (record.get("supernumerary_type") == "EWS" or 
+                      record.get("admission_category") == "EWS" or 
+                      record.get("ews_eligible") is True)
+            is_supernumerary = bool(record.get("supernumerary_seat") or (record.get("supernumerary_type") and record.get("supernumerary_type") not in ["None", "Regular", ""])) or is_tfws or is_ews
             is_nri = record.get("nri_category") in ["NRI", "NRI-Sponsored"]
             is_fn = bool(record.get("foreign_national_status") or (record.get("passport_country") and record.get("passport_country") not in ["None", "India", ""]))
 
             if prog:
-                appr_intake = prog.get("approved_intake", 0)
+                appr_intake = prog.get("approved_intake", 60)
                 act_enr = prog.get("actual_enrolment", 0)
 
-                # Regular seat check
+                # Regular seat check (Standard AICTE 60 seats cutoff per division)
                 if not is_supernumerary and not is_nri and not is_fn:
                     if act_enr >= appr_intake:
                         errors.append({
                             "code": "ADMISSION_EXCEEDING_APPROVED_INTAKE",
                             "field": "approved_intake",
-                            "message": f"ADMISSION VIOLATION: Branch '{prog.get('branch', branch_name)}' has exceeded AICTE Approved Intake ({act_enr}/{appr_intake} seats filled). Excess admission is strictly prohibited."
+                            "message": f"REGULAR INTAKE CUTOFF EXCEEDED: Department '{prog.get('branch', branch_name)}' has reached its AICTE Approved Intake cap of {appr_intake} seats ({act_enr}/{appr_intake} seats filled). Admissions beyond approved cutoff are strictly prohibited."
                         })
                     elif act_enr >= appr_intake - 2:
                         warnings.append({
                             "code": "NEAR_APPROVED_INTAKE_CAP",
                             "field": "approved_intake",
-                            "message": f"Branch '{prog.get('branch', branch_name)}' is approaching approved intake capacity ({act_enr}/{appr_intake} seats filled)."
+                            "message": f"Department '{prog.get('branch', branch_name)}' is approaching approved intake cutoff ({act_enr}/{appr_intake} seats filled)."
                         })
 
-                # Supernumerary quota check (Max 10-15%)
-                if is_supernumerary:
-                    sup_appr = prog.get("supernumerary_approved", 0)
+                # TFWS Quota check (Strictly 5% supernumerary quota = 3 seats for a 60-seat department)
+                if is_tfws:
+                    tfws_appr = prog.get("tfws_approved", 3)
+                    tfws_enr = prog.get("tfws_enrolled", 0)
+                    if tfws_enr >= tfws_appr:
+                        errors.append({
+                            "code": "EXCEEDING_TFWS_QUOTA",
+                            "field": "tfws_quota",
+                            "message": f"TFWS QUOTA VIOLATION: Exceeds sanctioned 5% Tuition Fee Waiver Scheme capacity ({tfws_enr}/{tfws_appr} seats filled in {prog.get('branch', branch_name)}). Under AICTE norms, TFWS is strictly capped at 5% of approved intake (3 seats per division of 60)."
+                        })
+                    elif tfws_enr >= tfws_appr - 1:
+                        warnings.append({
+                            "code": "NEAR_TFWS_QUOTA_CAP",
+                            "field": "tfws_quota",
+                            "message": f"TFWS quota in {prog.get('branch', branch_name)} is near capacity ({tfws_enr}/{tfws_appr} seats filled)."
+                        })
+
+                # EWS Quota check (Strictly 10% supernumerary quota = 6 seats for a 60-seat department)
+                if is_ews:
+                    ews_appr = prog.get("ews_approved", 6)
+                    ews_enr = prog.get("ews_enrolled", 0)
+                    if ews_enr >= ews_appr:
+                        errors.append({
+                            "code": "EXCEEDING_EWS_QUOTA",
+                            "field": "ews_quota",
+                            "message": f"EWS QUOTA VIOLATION: Exceeds sanctioned 10% Economically Weaker Section supernumerary capacity ({ews_enr}/{ews_appr} seats filled in {prog.get('branch', branch_name)}). Under AICTE norms, EWS is strictly capped at 10% of approved intake (6 seats per division of 60)."
+                        })
+                    elif ews_enr >= ews_appr - 1:
+                        warnings.append({
+                            "code": "NEAR_EWS_QUOTA_CAP",
+                            "field": "ews_quota",
+                            "message": f"EWS quota in {prog.get('branch', branch_name)} is near capacity ({ews_enr}/{ews_appr} seats filled)."
+                        })
+
+                # General Supernumerary quota check (Max sanctioned supernumerary ceiling)
+                if is_supernumerary and not is_tfws and not is_ews:
+                    sup_appr = prog.get("supernumerary_approved", 11)
                     sup_enr = prog.get("supernumerary_enrolled", 0)
                     if sup_enr >= sup_appr:
                         errors.append({
                             "code": "EXCEEDING_SUPERNUMERARY_QUOTA",
                             "field": "supernumerary_seats",
-                            "message": f"SUPERNUMERARY QUOTA VIOLATION: Exceeds approved supernumerary capacity ({sup_enr}/{sup_appr} seats filled)."
+                            "message": f"SUPERNUMERARY QUOTA VIOLATION: Exceeds approved supernumerary capacity ({sup_enr}/{sup_appr} seats filled in {prog.get('branch', branch_name)})."
                         })
 
                 # NRI quota check
@@ -496,7 +565,21 @@ class DatabaseManager:
             errors.append({
                 "code": "INCONSISTENT_SUPERNUMERARY_DATA",
                 "field": "supernumerary_type",
-                "message": "Supernumerary seat is marked True, but quota category (TFW, EWS, PMSSS, Sports) is not specified."
+                "message": "Supernumerary seat is marked True, but quota category (TFWS, EWS, PMSSS, Sports) is not specified."
+            })
+
+        if is_tfws and not record.get("family_annual_income"):
+            warnings.append({
+                "code": "TFWS_INCOME_PROOF_PENDING",
+                "field": "family_annual_income",
+                "message": "Tuition Fee Waiver Scheme (TFWS) requires parental income verification (< ₹8,00,000 p.a.)."
+            })
+
+        if is_ews and not record.get("ews_certificate_no"):
+            warnings.append({
+                "code": "EWS_CERTIFICATE_PENDING",
+                "field": "ews_certificate_no",
+                "message": "Economically Weaker Section (EWS) reservation requires Tehsildar/Revenue Authority Certificate No."
             })
 
         if record.get("student_consent") is False:
@@ -638,7 +721,9 @@ class DatabaseManager:
         flagged_count = sum(1 for s in students if s.get("status") == "Flagged")
 
         # Quota breakdowns
-        supernumerary_count = sum(1 for s in students if s.get("supernumerary_seat") is True)
+        tfws_count = sum(1 for s in students if s.get("supernumerary_type") == "TFWS" or s.get("admission_category") == "TFWS" or s.get("tfws_eligible") is True)
+        ews_count = sum(1 for s in students if s.get("supernumerary_type") == "EWS" or s.get("admission_category") == "EWS" or s.get("ews_eligible") is True)
+        supernumerary_count = sum(1 for s in students if s.get("supernumerary_seat") is True or s.get("supernumerary_type") in ["TFWS", "EWS", "PMSSS", "Sports", "KM"])
         nri_count = sum(1 for s in students if s.get("nri_category") in ["NRI", "NRI-Sponsored"])
         oci_count = sum(1 for s in students if s.get("oci_status") is True)
         fn_count = sum(1 for s in students if s.get("foreign_national_status") is True)
@@ -647,6 +732,10 @@ class DatabaseManager:
         total_approved_intake = sum(i.get("approved_intake", 0) for i in institutions)
         total_actual_enrolment = sum(i.get("actual_enrolment", 0) for i in institutions)
         total_supernumerary_quota = sum(i.get("supernumerary_quota", 0) for i in institutions)
+        total_tfws_quota = sum(sum(p.get("tfws_approved", 3) for p in i.get("programs", [])) for i in institutions)
+        total_tfws_enrolled = sum(sum(p.get("tfws_enrolled", 0) for p in i.get("programs", [])) for i in institutions)
+        total_ews_quota = sum(sum(p.get("ews_approved", 6) for p in i.get("programs", [])) for i in institutions)
+        total_ews_enrolled = sum(sum(p.get("ews_enrolled", 0) for p in i.get("programs", [])) for i in institutions)
 
         # Excess Admissions Detection
         excess_intake_institutions = [
@@ -673,6 +762,12 @@ class DatabaseManager:
             "intake_utilization_rate": round((total_actual_enrolment / max(1, total_approved_intake)) * 100, 1),
             "supernumerary_count": supernumerary_count,
             "supernumerary_quota_total": total_supernumerary_quota,
+            "tfws_count": tfws_count,
+            "tfws_quota_total": total_tfws_quota,
+            "tfws_enrolled_total": total_tfws_enrolled,
+            "ews_count": ews_count,
+            "ews_quota_total": total_ews_quota,
+            "ews_enrolled_total": total_ews_enrolled,
             "nri_count": nri_count,
             "oci_count": oci_count,
             "fn_count": fn_count,
@@ -699,6 +794,13 @@ class DatabaseManager:
             enr = inst.get("actual_enrolment", 0)
             diff = enr - appr
             status = "COMPLIANT" if diff <= 0 else f"VIOLATION (+{diff} EXCESS SEATS)"
+            
+            # Aggregate TFWS and EWS for this institution
+            inst_tfws_appr = sum(p.get("tfws_approved", 3) for p in inst.get("programs", []))
+            inst_tfws_enr = sum(p.get("tfws_enrolled", 0) for p in inst.get("programs", []))
+            inst_ews_appr = sum(p.get("ews_approved", 6) for p in inst.get("programs", []))
+            inst_ews_enr = sum(p.get("ews_enrolled", 0) for p in inst.get("programs", []))
+
             rows.append({
                 "aicte_id": inst.get("aicte_id"),
                 "institution_name": inst.get("name"),
@@ -707,6 +809,10 @@ class DatabaseManager:
                 "approved_intake": appr,
                 "actual_enrolment": enr,
                 "vacancy_or_excess": diff,
+                "tfws_approved": inst_tfws_appr,
+                "tfws_enrolled": inst_tfws_enr,
+                "ews_approved": inst_ews_appr,
+                "ews_enrolled": inst_ews_enr,
                 "supernumerary_enrolled": inst.get("actual_supernumerary", 0),
                 "supernumerary_quota": inst.get("supernumerary_quota", 0),
                 "nri_enrolled": inst.get("actual_nri", 0),
